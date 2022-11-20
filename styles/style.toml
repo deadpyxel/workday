@@ -1,2 +1,3 @@
 ["setup.cfg".flake8]
 docstring-style = "google"
+quotes = "double"
