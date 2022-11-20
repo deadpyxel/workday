@@ -9,7 +9,7 @@ from workday.validations import validate_code_format
 class DailyRegistry:
     """DailyRegistry class."""
 
-    cod: Optional[str] = ""
+    cod: str = ""
     work_start: Optional[datetime.datetime] = None
     end_start: Optional[datetime.datetime] = None
     lunch_start: Optional[datetime.datetime] = None
@@ -23,6 +23,6 @@ class DailyRegistry:
         assigns one conforming to the specification.
         """
         if self.cod:
-            return validate_code_format(self.cod)
+            validate_code_format(self.cod)
         current_date = datetime.datetime.today()
         self.cod = current_date.strftime("%Y%m%d")
