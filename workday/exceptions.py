@@ -1,2 +1,2 @@
 class InvalidRegistryCodeError(Exception):
-    pass
+    """Exception for linvalid Registry codes."""

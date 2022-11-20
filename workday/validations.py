@@ -15,13 +15,14 @@ def validate_code_format(code_str: str) -> bool:
     Raises:
         InvalidRegistryCodeError: if provided code has length different than 8.
         InvalidRegistryCodeError: if provided code has non numeric characters.
-        ValueError: If provided code has invalid time data.
 
     Returns:
         bool: True if the provided code has a valid format.
     """
     if len(code_str) != 8:
-        raise InvalidRegistryCodeError("Registry codes should have length of 8 characters")
+        raise InvalidRegistryCodeError(
+            "Registry codes should have length of 8 characters"
+        )
     if not code_str.isdigit():
         raise InvalidRegistryCodeError("Registry codes should only have numbers")
     expected_format = "%Y%m%d"

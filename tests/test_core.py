@@ -44,7 +44,8 @@ def test_codes_with_invalid_chars_raises_error(invalid_str: str) -> None:
         invalid_str (str): invalid characters sequence.
     """
     with pytest.raises(
-        InvalidRegistryCodeError, match="Registry codes should only have numbers"
+        InvalidRegistryCodeError,
+        match="Registry codes should only have numbers",
     ):
         DailyRegistry(cod=invalid_str)
 
@@ -64,7 +65,8 @@ def test_codes_with_wrong_length_raises_error(invalid_str: str) -> None:
         invalid_str (str): invalid character sequence.
     """
     with pytest.raises(
-        InvalidRegistryCodeError, match="Registry codes should have length of 8 characters"
+        InvalidRegistryCodeError,
+        match="Registry codes should have length of 8 characters",
     ):
         DailyRegistry(cod=invalid_str)
 
