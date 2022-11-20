@@ -1,0 +1,2 @@
+class InvalidRegistryCodeError(Exception):
+    pass
