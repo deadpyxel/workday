@@ -27,6 +27,12 @@ repos:
         args: ["--config=setup.cfg"]
         language: system
         types: [python]
+      - id: black
+        name: local black
+        decription: auto-formatter
+        entry: poetry run black .
+        language: system
+        types: [python]
       - id: mypy
         name: local mypy
         description: static type checker
