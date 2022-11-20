@@ -19,12 +19,24 @@ mypy = "^0.991"
 safety = "^2.3.1"
 pre-commit = "^2.20.0"
 nitpick = "^0.32.0"
+black = {version = "^22.10.0", allow-prereleases = true}
 
 [tool.nitpick]
 style = [
   "https://raw.githubusercontent.com/wemake-services/wemake-python-styleguide/master/styles/nitpick-style-wemake.toml",
   "styles/style.toml"
 ]
+
+[tool.pytest.ini_options]
+addopts = """
+  --cov workday
+  --cov-report term-missing --color=yes
+  --cov-report html
+  --cov-report xml
+  --no-cov-on-fail
+  --durations=10
+  --doctest-modules
+"""
 
 [build-system]
 requires = ["poetry-core"]
