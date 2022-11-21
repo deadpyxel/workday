@@ -29,7 +29,7 @@ repos:
         types: [python]
       - id: black
         name: local black
-        decription: auto-formatter
+        description: auto-formatter
         entry: poetry run black .
         language: system
         types: [python]
