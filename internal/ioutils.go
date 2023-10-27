@@ -2,6 +2,7 @@ package journal
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 )
 
@@ -26,10 +27,16 @@ func SaveEntries(jounalEntries []JournalEntry) error {
 
 }
 
-func LoadEntries() ([]JournalEntry, error) {
-	filename := "journal.json"
+func LoadEntries(filename string) ([]JournalEntry, error) {
 	data, err := os.ReadFile(filename)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			_, err := os.Create(filename)
+			if err != nil {
+				return nil, err
+			}
+			return []JournalEntry{}, nil
+		}
 		return nil, err
 	}
 
