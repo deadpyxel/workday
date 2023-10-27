@@ -37,3 +37,14 @@ func (j *JournalEntry) AddNote(note string) {
 func (j *JournalEntry) EndDay() {
 	j.EndTime = time.Now()
 }
+
+func FetchEntryByID(id string, entries []JournalEntry) *JournalEntry {
+	var currentEntry *JournalEntry
+	for _, entry := range entries {
+		if entry.ID == id {
+			currentEntry = &entry
+			break
+		}
+	}
+	return currentEntry
+}
