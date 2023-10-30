@@ -9,7 +9,7 @@ A simple CLI written in go to help with my day to day activity tracking at work.
 - Simple command structure
 - Plain text storage (a simple JSON)
 - Fully CLI Based
-- Very small footprint (In memory, cpu adn codebase)
+- Very small footprint (In memory, CPU and codebase)
 - Cross platform
 
 
@@ -19,6 +19,11 @@ Install my-project with go
 
 ```bash
 go install github.com/deadpyxel/workday@latest
+```
+
+And the you can just start to use it:
+```bash
+workday
 ```
 
 ## Running Tests
@@ -65,7 +70,6 @@ Run the app
  - Gopher's Public Discord
  - [cobra-cli](https://github.com/spf13/cobra-cli)
  - [Cobra Docs](https://github.com/spf13/cobra)
-
 
 ## License
 
