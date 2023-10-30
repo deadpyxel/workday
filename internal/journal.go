@@ -38,6 +38,9 @@ func (j *JournalEntry) EndDay() {
 	j.EndTime = time.Now()
 }
 
+// FetchEntryByID searches for a JournalEntry in the provided slice of entries by its ID.
+// It returns a pointer to the found JournalEntry and its index in the slice
+// If the entry is not found, it returns nil and -1.
 func FetchEntryByID(id string, entries []JournalEntry) (*JournalEntry, int) {
 	for i, entry := range entries {
 		if entry.ID == id {

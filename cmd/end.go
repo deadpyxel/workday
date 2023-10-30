@@ -24,6 +24,11 @@ to quickly create a Cobra application.`,
 	RunE: markDayAsFinished,
 }
 
+// markDayAsFinished marks the current day's JournalEntry as finished.
+// It loads the journal entries from the file, finds the entry for the current day,
+// and sets its EndTime to the current time.
+// If no entry is found for the current day, it returns and error.
+// After modifying the entry, it saves the updated entries back to the file.
 func markDayAsFinished(cmd *cobra.Command, args []string) error {
 	// Get current date
 	now := time.Now()
@@ -35,6 +40,7 @@ func markDayAsFinished(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// Get the index of the entry on the slice, -1 if not found
 	_, entryIndex := journal.FetchEntryByID(currentDayId, entries)
 
 	if entryIndex == -1 {
