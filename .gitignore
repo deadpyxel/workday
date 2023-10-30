@@ -49,4 +49,6 @@ tags
 
 # Custom files
 journal.json
-workday
+
+# Build artifacts
+bin/
