@@ -1,6 +1,9 @@
 package journal
 
-import "testing"
+import (
+	"strconv"
+	"testing"
+)
 
 func TestFindEntryByID(t *testing.T) {
 	entryID := "0000"
@@ -46,5 +49,18 @@ func TestFindEntryByID(t *testing.T) {
 				t.Errorf("Expected %v, got %v", tc.expected, entry)
 			}
 		})
+	}
+}
+
+func BenchmarkFetchEntryByID(b *testing.B) {
+	// Setup entries for benchmark
+	entries := make([]JournalEntry, 1e6)
+	for i := range entries {
+		entries[i] = JournalEntry{ID: strconv.Itoa(i)}
+	}
+
+	// Run the Benchmark
+	for i := 0; i < b.N; i++ {
+		FetchEntryByID(strconv.Itoa(i%1e6), entries)
 	}
 }
