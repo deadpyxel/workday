@@ -5,6 +5,8 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	journal "github.com/deadpyxel/workday/internal"
 	"github.com/spf13/cobra"
@@ -13,23 +15,61 @@ import (
 // startCmd represents the start command
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Starts a new workday entry",
+	Long: `The start command is used to begin a new workday entry in the journal.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		journalEntries, err := journal.LoadEntries("journal.json")
+It creates a new JournalEntry with the current date and time as the start time,
+appends it to the existing journal entries, and saves the updated journal entries to the file.
+After running this command, you can begin adding notes to the new workday entry.`,
+	RunE: startWorkDay,
+}
+
+// startWorkDay starts a new workday entry in the journal.
+// It first loads the existing journal entries from the file.
+// If there is already an entry for the current day, it asks the user if they want to override it.
+// If the user agrees, it overwrites the existing entry with a new one.
+// If the user does not agree, it does nothing and returns nil.
+// If there is no entry for the current day, it creates a new JournalEntry with the current date and time as the start time,
+// appends the new entry to the journal entries, and saves the updated journal entries back to the file.
+// It then prints a message indicating that a new JournalEntry has been added for the current day.
+func startWorkDay(cmd *cobra.Command, args []string) error {
+	journalEntries, err := journal.LoadEntries("journal.json")
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	currenctDayId := now.Format("20060102")
+	dateStr := now.Format("2006-01-02")
+	_, idx := journal.FetchEntryByID(currenctDayId, journalEntries)
+	if idx != -1 {
+		fmt.Printf("There is already an entry for %s. Do you want to override it? (y/N): ", dateStr)
+		userInput, err := getUserInput()
 		if err != nil {
 			return err
 		}
-		newJournalEntry := journal.NewJournalEntry()
-		journalEntries = append(journalEntries, *newJournalEntry)
-		fmt.Printf("Added new Journal Entry for %s\n", newJournalEntry.StartTime.Format("2006-01-02"))
-		return journal.SaveEntries(journalEntries)
-	},
+		if userInput != "y" {
+			fmt.Println("No changes made...")
+			return nil
+		}
+		journalEntries[idx] = *journal.NewJournalEntry()
+		fmt.Printf("Data for %s overwrote.", dateStr)
+		return nil
+	}
+	newEntry := journal.NewJournalEntry()
+	journalEntries = append(journalEntries, *newEntry)
+	fmt.Printf("Added new Journal Entry for %s\n", dateStr)
+	return journal.SaveEntries(journalEntries)
+}
+
+func getUserInput() (string, error) {
+
+	var userInput string
+	_, err := fmt.Scanln(&userInput)
+	if err != nil {
+		return "", err
+	}
+	return strings.ToLower(userInput), nil
 }
 
 func init() {
