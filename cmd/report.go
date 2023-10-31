@@ -1,28 +1,45 @@
 /*
 Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-
 */
 package cmd
 
 import (
 	"fmt"
+	"time"
 
+	journal "github.com/deadpyxel/workday/internal"
 	"github.com/spf13/cobra"
 )
 
 // reportCmd represents the report command
 var reportCmd = &cobra.Command{
 	Use:   "report",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Reports the workday entry for the current day",
+	Long: `The report command is used to print out the workday entry for the current day.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("report called")
-	},
+It loads the existing jorunal entries from the file and fetches the entry for the current day.
+If there is no entry for the current day, it returns an error.
+Otherwise, it prints out the entry.`,
+	RunE: reportWorkDay,
+}
+
+// reportWorkDay reports the workday entry for the current day.
+// It first loads the existing journal entries from the file.
+// If there is no entry for the current day, it returns and error.
+// Otherwise, it prints out the entry.
+func reportWorkDay(cmd *cobra.Command, args []string) error {
+	journalEntries, err := journal.LoadEntries("journal.json")
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	currenctDayId := now.Format("20060102")
+	currentEntry, _ := journal.FetchEntryByID(currenctDayId, journalEntries)
+	if currentEntry == nil {
+		return fmt.Errorf("Could not find any entry for the current day.")
+	}
+	fmt.Println(currentEntry)
+	return nil
 }
 
 func init() {
