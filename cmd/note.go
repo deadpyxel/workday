@@ -44,6 +44,10 @@ func addNoteToCurrentDay(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Could not find any entry for the current day.")
 	}
 	journalEntries[idx].Notes = append(journalEntries[idx].Notes, newNote)
+	err = journal.SaveEntries(journalEntries)
+	if err != nil {
+		return err
+	}
 	fmt.Println("Successfully added new note to current day.")
 	return nil
 }
