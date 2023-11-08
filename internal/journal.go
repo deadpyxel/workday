@@ -35,8 +35,12 @@ func (j *JournalEntry) String() string {
 	return fmt.Sprintf("%s\n%s\n\n%s", headerStr, timeStr, notes)
 }
 
-func (j *JournalEntry) AddNote(note string) {
+func (j *JournalEntry) AddNote(note string) error {
+	if note == "" {
+		return fmt.Errorf("Cannot add empty note")
+	}
 	j.Notes = append(j.Notes, note)
+	return nil
 }
 
 func (j *JournalEntry) EndDay() {

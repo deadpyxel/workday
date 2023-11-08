@@ -1,6 +1,7 @@
 package journal
 
 import (
+	"slices"
 	"strconv"
 	"testing"
 )
@@ -55,6 +56,60 @@ func TestFindEntryByID(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestAddNote(t *testing.T) {
+	t.Run("when adding an empty note function returns error", func(t *testing.T) {
+		entry := NewJournalEntry()
+		note := ""
+		err := entry.AddNote(note)
+		if err == nil {
+			t.Errorf("Expected zero notes with error, got %v", entry.Notes)
+		}
+	})
+	t.Run("when adding an valid note returns no errors and appends to slice", func(t *testing.T) {
+		entry := NewJournalEntry()
+		note := "test"
+		err := entry.AddNote(note)
+		if err != nil {
+			t.Errorf("Expected no errors, got %v", err)
+		}
+		if len(entry.Notes) != 1 {
+			t.Errorf("Expected Notes field to have a single note, found %v", entry.Notes)
+		}
+	})
+	t.Run("when adding multiple notes returns no errors and has all contents", func(t *testing.T) {
+		entry := NewJournalEntry()
+		notes := []string{"test1", "test2", "test3"}
+		for _, note := range notes {
+			err := entry.AddNote(note)
+			if err != nil {
+				t.Errorf("Expected no errors, got %v", err)
+			}
+		}
+		if slices.Compare(entry.Notes, notes) != 0 {
+			t.Errorf("Expected Notes field to have %v, found %v", notes, entry.Notes)
+		}
+	})
+	t.Run("when adding a note to entry with existing notes returns no errors and updates contents", func(t *testing.T) {
+		entry := NewJournalEntry()
+		notes := []string{"test1", "test2"}
+		err := entry.AddNote(notes[0])
+		if err != nil {
+			t.Errorf("Expected no errors, got %v", err)
+		}
+		if len(entry.Notes) != 1 || slices.Compare(entry.Notes, []string{notes[0]}) != 0 {
+			t.Errorf("Expected to have a single note, got %v", entry.Notes)
+		}
+		err = entry.AddNote(notes[1])
+		if err != nil {
+			t.Errorf("Expected no errors, got %v", err)
+		}
+		if slices.Compare(entry.Notes, notes) != 0 {
+			t.Errorf("Expected Notes field to have %v, found %v", notes, entry.Notes)
+		}
+	})
+
 }
 
 func BenchmarkFetchEntryByID(b *testing.B) {
