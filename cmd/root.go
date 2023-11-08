@@ -81,10 +81,15 @@ func initConfig() {
 		cobra.CheckErr(err)
 
 		// Search config in home directory with name ".workday" (without extension).
-		viper.AddConfigPath(home)
+		viper.AddConfigPath(home + "/.config/workday")
 		viper.SetConfigType("yaml")
-		viper.SetConfigName(".workday")
+		viper.SetConfigName("config.yaml")
 	}
+
+	// Set default value for journalPath. Will use your HOME if not set.
+	home, err := os.UserHomeDir()
+	cobra.CheckErr(err)
+	viper.SetDefault("journalPath", home+"/journal.json")
 
 	viper.AutomaticEnv() // read in environment variables that match
 

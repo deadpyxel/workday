@@ -9,6 +9,7 @@ import (
 
 	journal "github.com/deadpyxel/workday/internal"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // noteCmd represents the note command
@@ -29,7 +30,7 @@ Otherwise, it will add the note to the current entry and save the updated journa
 // If there is no entry for the current day, it prints an error message and returns an error.
 // Otherwise, it adds the note to the current entry and saves the updated journal entries back to the file.
 func addNoteToCurrentDay(cmd *cobra.Command, args []string) error {
-	journalEntries, err := journal.LoadEntries("journal.json")
+	journalEntries, err := journal.LoadEntries(viper.GetString("journalPath"))
 	if err != nil {
 		return err
 	}

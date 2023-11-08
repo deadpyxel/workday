@@ -9,6 +9,7 @@ import (
 
 	journal "github.com/deadpyxel/workday/internal"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // endCmd represents the end command
@@ -35,7 +36,7 @@ func markDayAsFinished(cmd *cobra.Command, args []string) error {
 	currentDayId := now.Format("20060102")
 
 	// Load journal entries
-	entries, err := journal.LoadEntries("journal.json")
+	entries, err := journal.LoadEntries(viper.GetString("journalPath"))
 	if err != nil {
 		return err
 	}

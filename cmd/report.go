@@ -9,6 +9,7 @@ import (
 
 	journal "github.com/deadpyxel/workday/internal"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // reportCmd represents the report command
@@ -28,7 +29,7 @@ Otherwise, it prints out the entry.`,
 // If there is no entry for the current day, it returns and error.
 // Otherwise, it prints out the entry.
 func reportWorkDay(cmd *cobra.Command, args []string) error {
-	journalEntries, err := journal.LoadEntries("journal.json")
+	journalEntries, err := journal.LoadEntries(viper.GetString("journalPath"))
 	if err != nil {
 		return err
 	}

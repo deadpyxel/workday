@@ -11,11 +11,11 @@ A simple CLI written in go to help with my day to day activity tracking at work.
 - Fully CLI Based
 - Very small footprint (In memory, CPU and codebase)
 - Cross platform
-
+- Configurable using config files
 
 ## Installation
 
-Install my-project with go
+Install workday with go
 
 ```bash
 go install github.com/deadpyxel/workday@latest
@@ -24,6 +24,14 @@ go install github.com/deadpyxel/workday@latest
 And the you can just start to use it:
 ```bash
 workday
+```
+
+## Configuration
+
+Workday allows you to configure some options using a YAML configuration file. By default, it will search for the file under your `$HOME/.config/workday/config.yaml`, but you can pass the configuration file path with the `--config` flag. An example of a valid config file can be seen below.
+
+```yaml
+journalPath: "/path/to/your/journal.json"
 ```
 
 ## Running Tests
@@ -70,6 +78,7 @@ Run the app
  - Gopher's Public Discord
  - [cobra-cli](https://github.com/spf13/cobra-cli)
  - [Cobra Docs](https://github.com/spf13/cobra)
+ - [Viper](https://github.com/spf13/viper)
 
 ## License
 

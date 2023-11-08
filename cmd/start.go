@@ -10,6 +10,7 @@ import (
 
 	journal "github.com/deadpyxel/workday/internal"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // startCmd represents the start command
@@ -33,7 +34,7 @@ After running this command, you can begin adding notes to the new workday entry.
 // appends the new entry to the journal entries, and saves the updated journal entries back to the file.
 // It then prints a message indicating that a new JournalEntry has been added for the current day.
 func startWorkDay(cmd *cobra.Command, args []string) error {
-	journalEntries, err := journal.LoadEntries("journal.json")
+	journalEntries, err := journal.LoadEntries(viper.GetString("journalPath"))
 	if err != nil {
 		return err
 	}
