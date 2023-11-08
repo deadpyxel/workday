@@ -34,16 +34,17 @@ var cfgFile string
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "workday",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
+	Short: "A CLI tool for managing and reporting workday entries",
+	Long: `Workday is a CLI tool that allows you to manage your workday entries and generate reports.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+Workday provides a set of commands and subcommands that you can use to add, update, and report workday entries.
+Workday works like a journal where you can add notes to you day, and track the start and end of the day.
+
+For example, you can use 'workday start' to start a new workday, 'workday note' to add notes to the current day.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	// Run: func(cmd *cobra.Command, args []string) { },
+	Example: "workday start",
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
