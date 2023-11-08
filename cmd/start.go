@@ -34,7 +34,8 @@ After running this command, you can begin adding notes to the new workday entry.
 // appends the new entry to the journal entries, and saves the updated journal entries back to the file.
 // It then prints a message indicating that a new JournalEntry has been added for the current day.
 func startWorkDay(cmd *cobra.Command, args []string) error {
-	journalEntries, err := journal.LoadEntries(viper.GetString("journalPath"))
+	journalPath := viper.GetString("journalPath")
+	journalEntries, err := journal.LoadEntries(journalPath)
 	if err != nil {
 		return err
 	}
@@ -60,7 +61,7 @@ func startWorkDay(cmd *cobra.Command, args []string) error {
 	newEntry := journal.NewJournalEntry()
 	journalEntries = append(journalEntries, *newEntry)
 	fmt.Printf("Added new Journal Entry for %s\n", dateStr)
-	return journal.SaveEntries(journalEntries)
+	return journal.SaveEntries(journalEntries, journalPath)
 }
 
 func getUserInput() (string, error) {

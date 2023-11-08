@@ -36,7 +36,8 @@ func markDayAsFinished(cmd *cobra.Command, args []string) error {
 	currentDayId := now.Format("20060102")
 
 	// Load journal entries
-	entries, err := journal.LoadEntries(viper.GetString("journalPath"))
+	journalPath := viper.GetString("journalPath")
+	entries, err := journal.LoadEntries(journalPath)
 	if err != nil {
 		return err
 	}
@@ -50,7 +51,7 @@ func markDayAsFinished(cmd *cobra.Command, args []string) error {
 
 	entries[entryIndex].EndDay()
 
-	err = journal.SaveEntries(entries)
+	err = journal.SaveEntries(entries, journalPath)
 	if err != nil {
 		return fmt.Errorf("Failed to save journal entries: %v\n", err)
 	}

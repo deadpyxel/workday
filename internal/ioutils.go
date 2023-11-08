@@ -4,16 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
-
-	"github.com/spf13/viper"
 )
 
-func SaveEntries(jounalEntries []JournalEntry) error {
+func SaveEntries(jounalEntries []JournalEntry, filename string) error {
 	data, err := json.Marshal(jounalEntries)
 	if err != nil {
 		return err
 	}
-	filename := viper.GetString("journalPath")
 	file, err := os.Create(filename)
 	if err != nil {
 		return err

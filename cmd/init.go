@@ -6,6 +6,7 @@ package cmd
 import (
 	journal "github.com/deadpyxel/workday/internal"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // initCmd represents the init command
@@ -20,7 +21,7 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		emptyJournal := make([]journal.JournalEntry, 0)
-		return journal.SaveEntries(emptyJournal)
+		return journal.SaveEntries(emptyJournal, viper.GetString("journalPath"))
 	},
 }
 

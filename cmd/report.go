@@ -29,7 +29,8 @@ Otherwise, it prints out the entry.`,
 // If there is no entry for the current day, it returns and error.
 // Otherwise, it prints out the entry.
 func reportWorkDay(cmd *cobra.Command, args []string) error {
-	journalEntries, err := journal.LoadEntries(viper.GetString("journalPath"))
+	journalPath := viper.GetString("journalPath")
+	journalEntries, err := journal.LoadEntries(journalPath)
 	if err != nil {
 		return err
 	}
