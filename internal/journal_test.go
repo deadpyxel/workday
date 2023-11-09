@@ -3,6 +3,7 @@ package journal
 import (
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -143,6 +144,48 @@ func TestJournalEntryStringer(t *testing.T) {
 
 		if result != expected {
 			t.Errorf("Expected: \n%s, but got: \n%s", expected, result)
+		}
+	})
+}
+
+func TestJournalEntryStringerComponents(t *testing.T) {
+	startTime := time.Date(2021, time.January, 1, 12, 0, 0, 0, time.UTC)
+	endTime := time.Date(2021, time.January, 1, 13, 0, 0, 0, time.UTC)
+	notes := []string{"Note 1", "Note 2"}
+
+	journalEntry := &JournalEntry{
+		StartTime: startTime,
+		EndTime:   endTime,
+		Notes:     notes,
+	}
+
+	expectedHeader := "Date: 2021-01-01"
+	expectedTime := "Start: 12:00:00 | End: 13:00:00 | Time: 1h0m0s"
+	expectedNotes := []string{"- Note 1", "- Note 2"}
+
+	result := journalEntry.String()
+
+	// Split the result into lines
+	lines := strings.Split(strings.TrimSpace(result), "\n")
+
+	t.Run("Date header is properly formatted", func(t *testing.T) {
+		if lines[0] != expectedHeader {
+			t.Errorf("Expected header: %s, but got: %s", expectedHeader, lines[0])
+		}
+	})
+
+	t.Run("Time header is properly formatted", func(t *testing.T) {
+		if lines[1] != expectedTime {
+			t.Errorf("Expected time: %s, but got: %s", expectedTime, lines[1])
+		}
+	})
+
+	t.Run("Notes components is properly formatted", func(t *testing.T) {
+		for i, note := range expectedNotes {
+			// Add 3 because the notes start on the 4th line
+			if lines[i+3] != note {
+				t.Errorf("Expected note: %s, but got: %s", note, lines[i+3])
+			}
 		}
 	})
 }
