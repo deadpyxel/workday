@@ -131,6 +131,7 @@ func TestJournalEntryStringer(t *testing.T) {
 		t.Errorf("Expected: \n%s, but got: \n%s", expected, result)
 	}
 }
+
 func BenchmarkFetchEntryByID(b *testing.B) {
 	// Setup entries for benchmark
 	entries := make([]JournalEntry, 1e6)

@@ -28,8 +28,12 @@ func (j *JournalEntry) String() string {
 	}
 	timeStr := fmt.Sprintf("Start: %s | End: %s | Time: %s", start, end, totalTime)
 	notes := ""
-	for _, note := range j.Notes {
-		notes += fmt.Sprintf("- %s\n", note)
+	for i, note := range j.Notes {
+		notes += fmt.Sprintf("- %s", note)
+		// Only append newline character if the note is not the last one
+		if i < len(j.Notes)-1 {
+			notes += "\n"
+		}
 	}
 	headerStr := fmt.Sprintf("Date: %s", j.StartTime.Format("2006-01-02"))
 	return fmt.Sprintf("%s\n%s\n\n%s", headerStr, timeStr, notes)
