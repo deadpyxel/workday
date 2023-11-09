@@ -118,18 +118,33 @@ func TestJournalEntryStringer(t *testing.T) {
 	endTime := time.Date(2021, time.January, 1, 13, 0, 0, 0, time.UTC)
 	notes := []string{"Note 1", "Note 2"}
 
-	journalEntry := &JournalEntry{
-		StartTime: startTime,
-		EndTime:   endTime,
-		Notes:     notes,
-	}
+	t.Run("When an entry has all fields filled returns formatted string", func(t *testing.T) {
+		journalEntry := &JournalEntry{
+			StartTime: startTime,
+			EndTime:   endTime,
+			Notes:     notes,
+		}
 
-	expected := "Date: 2021-01-01\nStart: 12:00:00 | End: 13:00:00 | Time: 1h0m0s\n\n- Note 1\n- Note 2"
-	result := journalEntry.String()
+		expected := "Date: 2021-01-01\nStart: 12:00:00 | End: 13:00:00 | Time: 1h0m0s\n\n- Note 1\n- Note 2"
+		result := journalEntry.String()
 
-	if result != expected {
-		t.Errorf("Expected: \n%s, but got: \n%s", expected, result)
-	}
+		if result != expected {
+			t.Errorf("Expected: \n%s, but got: \n%s", expected, result)
+		}
+	})
+	t.Run("When an entry has no EndTime returns formatted string with not closed message", func(t *testing.T) {
+		journalEntry := &JournalEntry{
+			StartTime: startTime,
+			Notes:     notes,
+		}
+
+		expected := "Date: 2021-01-01\nStart: 12:00:00 | End: Not yet closed | Time: N/A\n\n- Note 1\n- Note 2"
+		result := journalEntry.String()
+
+		if result != expected {
+			t.Errorf("Expected: \n%s, but got: \n%s", expected, result)
+		}
+	})
 }
 
 func BenchmarkFetchEntryByID(b *testing.B) {
