@@ -6,6 +6,23 @@ import (
 	"os"
 )
 
+// SaveEntries encodes the given journal entries into JSON format and writes
+// them to a file with the specified filename.
+//
+// The function will return an error if the encoding process fails or if the
+// file cannot be created or written to.
+//
+// The function takes two parameters:
+// - journalEntries: a slice of JournalEntry objects to be saved.
+// - filename: a string representing the name of the file to write to.
+//
+// Example:
+//
+//	entries := []JournalEntry{...}
+//	err := SaveEntries(entries, "journal.json")
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
 func SaveEntries(jounalEntries []JournalEntry, filename string) error {
 	data, err := json.Marshal(jounalEntries)
 	if err != nil {
