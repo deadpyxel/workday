@@ -52,3 +52,6 @@ journal.json
 
 # Build artifacts
 bin/
+
+# local configuration file used for developement
+config.yaml
