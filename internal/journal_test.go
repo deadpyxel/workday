@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strconv"
 	"testing"
+	"time"
 )
 
 func TestFindEntryByID(t *testing.T) {
@@ -112,6 +113,24 @@ func TestAddNote(t *testing.T) {
 
 }
 
+func TestJournalEntryStringer(t *testing.T) {
+	startTime := time.Date(2021, time.January, 1, 12, 0, 0, 0, time.UTC)
+	endTime := time.Date(2021, time.January, 1, 13, 0, 0, 0, time.UTC)
+	notes := []string{"Note 1", "Note 2"}
+
+	journalEntry := &JournalEntry{
+		StartTime: startTime,
+		EndTime:   endTime,
+		Notes:     notes,
+	}
+
+	expected := "Date: 2021-01-01\nStart: 12:00:00 | End: 13:00:00 | Time: 1h0m0s\n\n- Note 1\n- Note 2"
+	result := journalEntry.String()
+
+	if result != expected {
+		t.Errorf("Expected: \n%s, but got: \n%s", expected, result)
+	}
+}
 func BenchmarkFetchEntryByID(b *testing.B) {
 	// Setup entries for benchmark
 	entries := make([]JournalEntry, 1e6)
