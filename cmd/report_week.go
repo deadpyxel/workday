@@ -34,7 +34,7 @@ func reportWeek(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	for _, entry := range currentWeek {
-		fmt.Printf("%s---\n", entry.String())
+		fmt.Printf("%s\n---\n", entry.String())
 	}
 	return nil
 }

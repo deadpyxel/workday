@@ -56,6 +56,7 @@ func TestFindEntryByID(t *testing.T) {
 		})
 	}
 }
+
 func BenchmarkFetchEntryByID(b *testing.B) {
 	// Setup entries for benchmark
 	entries := make([]JournalEntry, 1e6)
