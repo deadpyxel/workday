@@ -17,7 +17,7 @@ func FetchEntryByID(id string, entries []JournalEntry) (*JournalEntry, int) {
 	return nil, -1
 }
 
-// CurrentWeekEntries filters a slice of JournalEntry objects and returns a new slice
+// FetchEntriesByWeekDate filters a slice of JournalEntry objects and returns a new slice
 // containing only the entries from the current week. The function uses the ISO week date
 // system, where weeks start on a Monday and the first week of the year is the one that
 // includes at least four days of the new year.
@@ -32,20 +32,19 @@ func FetchEntryByID(id string, entries []JournalEntry) (*JournalEntry, int) {
 // Example:
 //
 //	entries := []JournalEntry{...}
-//	currentWeekEntries, err := CurrentWeekEntries(entries)
+//	currentWeekEntries, err := FetchEntriesByWeekDate(entries)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	fmt.Println(currentWeekEntries) // Prints the entries for the current week
-func CurrentWeekEntries(journalEntries []JournalEntry) ([]JournalEntry, error) {
-	if journalEntries == nil {
-		return []JournalEntry{}, fmt.Errorf("No entries were passed")
+func FetchEntriesByWeekDate(journalEntries []JournalEntry, currentDate time.Time) ([]JournalEntry, error) {
+	if len(journalEntries) == 0 {
+		return nil, fmt.Errorf("No entries were passed")
 	}
 	var currentWeekEntries []JournalEntry
 
 	// Get the current year and ISO week number.
-	now := time.Now()
-	currentYear, currentWeek := now.ISOWeek()
+	currentYear, currentWeek := currentDate.ISOWeek()
 
 	for _, entry := range journalEntries {
 		// get the year and ISO week number of the entry.
@@ -56,8 +55,8 @@ func CurrentWeekEntries(journalEntries []JournalEntry) ([]JournalEntry, error) {
 			currentWeekEntries = append(currentWeekEntries, entry)
 		}
 	}
-	if currentWeekEntries == nil {
-		return currentWeekEntries, fmt.Errorf("No entries found for the current week")
+	if len(currentWeekEntries) == 0 {
+		return nil, fmt.Errorf("No entries found for the current week")
 	}
 
 	return currentWeekEntries, nil

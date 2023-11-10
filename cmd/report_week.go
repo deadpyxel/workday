@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"time"
 
 	journal "github.com/deadpyxel/workday/internal"
 	"github.com/spf13/cobra"
@@ -29,7 +30,8 @@ func reportWeek(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	currentWeek, err := journal.CurrentWeekEntries(journalEntries)
+	now := time.Now()
+	currentWeek, err := journal.FetchEntriesByWeekDate(journalEntries, now)
 	if err != nil {
 		return err
 	}
