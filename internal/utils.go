@@ -17,6 +17,26 @@ func FetchEntryByID(id string, entries []JournalEntry) (*JournalEntry, int) {
 	return nil, -1
 }
 
+// CurrentWeekEntries filters a slice of JournalEntry objects and returns a new slice
+// containing only the entries from the current week. The function uses the ISO week date
+// system, where weeks start on a Monday and the first week of the year is the one that
+// includes at least four days of the new year.
+//
+// The function takes a slice of JournalEntry objects and iterates over each entry. It
+// checks the start time of each entry and compares it with the current week. If the entry
+// belongs to the current week, it is added to the new slice.
+//
+// If no entries are passed, or no entries belong to the current week, the function returns
+// an error along with an empty slice.
+//
+// Example:
+//
+//	entries := []JournalEntry{...}
+//	currentWeekEntries, err := CurrentWeekEntries(entries)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Println(currentWeekEntries) // Prints the entries for the current week
 func CurrentWeekEntries(journalEntries []JournalEntry) ([]JournalEntry, error) {
 	if journalEntries == nil {
 		return []JournalEntry{}, fmt.Errorf("No entries were passed")
