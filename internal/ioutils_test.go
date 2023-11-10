@@ -3,6 +3,7 @@ package journal
 import (
 	"encoding/json"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -91,6 +92,54 @@ func TestLoadEntries(t *testing.T) {
 		_, err = LoadEntries(filename)
 		if err == nil {
 			t.Error("Expected an error, got nil")
+		}
+	})
+}
+
+func TestSaveEntries(t *testing.T) {
+	// Create static time value for testing
+	staticTime := time.Date(2023, time.November, 5, 12, 0, 0, 0, time.UTC)
+	// Create some journal entries.
+	entries := []JournalEntry{
+		{
+			ID:        "1",
+			StartTime: staticTime,
+			Notes:     []string{"Note 1", "Note 2"},
+		},
+		{
+			ID:        "2",
+			StartTime: staticTime,
+			Notes:     []string{"Note 3", "Note 4"},
+		},
+	}
+
+	t.Run("When saving entries file contents match specification", func(t *testing.T) {
+		// Create a temporary file.
+		tmpfile, err := os.CreateTemp("", "t.json")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(tmpfile.Name()) // clean up
+
+		// Use the SaveEntries function to write the entries to the temporary file.
+		if err := SaveEntries(entries, tmpfile.Name()); err != nil {
+			t.Fatal(err)
+		}
+
+		data, err := os.ReadFile(tmpfile.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Load the entries from the file.
+		var loadedEntries []JournalEntry
+		if err := json.Unmarshal(data, &loadedEntries); err != nil {
+			t.Fatal(err)
+		}
+
+		// Check if the loaded entries match the original entries.
+		if !reflect.DeepEqual(loadedEntries, entries) {
+			t.Errorf("Expected: %+v, but got: %+v", entries, loadedEntries)
 		}
 	})
 }
