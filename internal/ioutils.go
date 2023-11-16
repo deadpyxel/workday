@@ -23,8 +23,8 @@ import (
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-func SaveEntries(jounalEntries []JournalEntry, filename string) error {
-	data, err := json.Marshal(jounalEntries)
+func SaveEntries(journalEntries []JournalEntry, filename string) error {
+	data, err := json.Marshal(journalEntries)
 	if err != nil {
 		return err
 	}
