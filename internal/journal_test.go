@@ -1,16 +1,22 @@
 package journal
 
 import (
-	"slices"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/google/go-cmp/cmp"
 )
+
+func noteCompare(x, y Note) bool {
+	return x.Contents == y.Contents && reflect.DeepEqual(x.Tags, y.Tags)
+}
 
 func TestAddNote(t *testing.T) {
 	t.Run("when adding an empty note function returns error", func(t *testing.T) {
 		entry := NewJournalEntry()
-		note := ""
+		note := Note{Contents: ""}
 		err := entry.AddNote(note)
 		if err == nil {
 			t.Errorf("Expected zero notes with error, got %v", entry.Notes)
@@ -18,7 +24,7 @@ func TestAddNote(t *testing.T) {
 	})
 	t.Run("when adding an valid note returns no errors and appends to slice", func(t *testing.T) {
 		entry := NewJournalEntry()
-		note := "test"
+		note := Note{Contents: "test"}
 		err := entry.AddNote(note)
 		if err != nil {
 			t.Errorf("Expected no errors, got %v", err)
@@ -29,32 +35,32 @@ func TestAddNote(t *testing.T) {
 	})
 	t.Run("when adding multiple notes returns no errors and has all contents", func(t *testing.T) {
 		entry := NewJournalEntry()
-		notes := []string{"test1", "test2", "test3"}
+		notes := []Note{{Contents: "test1"}, {Contents: "test2"}, {Contents: "test3"}}
 		for _, note := range notes {
 			err := entry.AddNote(note)
 			if err != nil {
 				t.Errorf("Expected no errors, got %v", err)
 			}
 		}
-		if slices.Compare(entry.Notes, notes) != 0 {
+		if !cmp.Equal(entry.Notes, notes, cmp.Comparer(noteCompare)) {
 			t.Errorf("Expected Notes field to have %v, found %v", notes, entry.Notes)
 		}
 	})
 	t.Run("when adding a note to entry with existing notes returns no errors and updates contents", func(t *testing.T) {
 		entry := NewJournalEntry()
-		notes := []string{"test1", "test2"}
+		notes := []Note{{Contents: "test1"}, {Contents: "test2"}}
 		err := entry.AddNote(notes[0])
 		if err != nil {
 			t.Errorf("Expected no errors, got %v", err)
 		}
-		if len(entry.Notes) != 1 || slices.Compare(entry.Notes, []string{notes[0]}) != 0 {
+		if len(entry.Notes) != 1 || !cmp.Equal(entry.Notes, []Note{notes[0]}, cmp.Comparer(noteCompare)) {
 			t.Errorf("Expected to have a single note, got %v", entry.Notes)
 		}
 		err = entry.AddNote(notes[1])
 		if err != nil {
 			t.Errorf("Expected no errors, got %v", err)
 		}
-		if slices.Compare(entry.Notes, notes) != 0 {
+		if !cmp.Equal(entry.Notes, notes, cmp.Comparer(noteCompare)) {
 			t.Errorf("Expected Notes field to have %v, found %v", notes, entry.Notes)
 		}
 	})
@@ -64,7 +70,7 @@ func TestAddNote(t *testing.T) {
 func TestJournalEntryStringer(t *testing.T) {
 	startTime := time.Date(2021, time.January, 1, 12, 0, 0, 0, time.UTC)
 	endTime := time.Date(2021, time.January, 1, 13, 0, 0, 0, time.UTC)
-	notes := []string{"Note 1", "Note 2"}
+	notes := []Note{{Contents: "Note 1"}, {Contents: "Note 2"}}
 
 	t.Run("When an entry has all fields filled returns formatted string", func(t *testing.T) {
 		journalEntry := &JournalEntry{
@@ -98,7 +104,7 @@ func TestJournalEntryStringer(t *testing.T) {
 func TestJournalEntryStringerComponents(t *testing.T) {
 	startTime := time.Date(2021, time.January, 1, 12, 0, 0, 0, time.UTC)
 	endTime := time.Date(2021, time.January, 1, 13, 0, 0, 0, time.UTC)
-	notes := []string{"Note 1", "Note 2"}
+	notes := []Note{{Contents: "Note 1"}, {Contents: "Note 2"}}
 
 	journalEntry := &JournalEntry{
 		StartTime: startTime,

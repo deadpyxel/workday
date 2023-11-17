@@ -104,12 +104,12 @@ func TestSaveEntries(t *testing.T) {
 		{
 			ID:        "1",
 			StartTime: staticTime,
-			Notes:     []string{"Note 1", "Note 2"},
+			Notes:     generateNoteSlice(2, 0),
 		},
 		{
 			ID:        "2",
 			StartTime: staticTime,
-			Notes:     []string{"Note 3", "Note 4"},
+			Notes:     generateNoteSlice(2, 2),
 		},
 	}
 

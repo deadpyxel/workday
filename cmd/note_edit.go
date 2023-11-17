@@ -48,7 +48,7 @@ func editNoteInCurrentDay(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("The index provided is not valid for the existing notes: %d", noteIdx)
 	}
 
-	journalEntries[idx].Notes[noteIdx] = newNote
+	journalEntries[idx].Notes[noteIdx] = journal.Note{Contents: newNote}
 
 	err = journal.SaveEntries(journalEntries, journalPath)
 	if err != nil {

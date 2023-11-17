@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	journal "github.com/deadpyxel/workday/internal"
@@ -34,6 +35,10 @@ func addNoteToCurrentDay(cmd *cobra.Command, args []string) error {
 	}
 
 	newNote := args[0]
+	tags := strings.Split(tags, ",")
+	if len(tags) == 0 {
+		tags = nil
+	}
 
 	now := time.Now()
 	currenctDayId := now.Format("20060102")
@@ -42,7 +47,7 @@ func addNoteToCurrentDay(cmd *cobra.Command, args []string) error {
 		fmt.Println("Please run `workday start` first to create a new entry.")
 		return fmt.Errorf("Could not find any entry for the current day.")
 	}
-	journalEntries[idx].Notes = append(journalEntries[idx].Notes, newNote)
+	journalEntries[idx].Notes = append(journalEntries[idx].Notes, journal.Note{Contents: newNote, Tags: tags})
 	err = journal.SaveEntries(journalEntries, journalPath)
 	if err != nil {
 		return err
@@ -51,6 +56,9 @@ func addNoteToCurrentDay(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+var tags string
+
 func init() {
+	noteCmd.Flags().StringVarP(&tags, "tags", "t", "", "Tags for the note")
 	rootCmd.AddCommand(noteCmd)
 }

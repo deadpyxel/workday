@@ -5,11 +5,24 @@ import (
 	"time"
 )
 
+type Note struct {
+	Tags     []string `json:"Tags,omitempty"` // Tags for this particular note
+	Contents string   `json:"Contents"`       // Note contents
+}
+
+func (n *Note) String() string {
+	tags := ""
+	if len(n.Tags) > 0 {
+		tags = fmt.Sprintf(" %v", n.Tags)
+	}
+	return fmt.Sprintf("- %s%s", n.Contents, tags)
+}
+
 type JournalEntry struct {
 	ID        string
 	StartTime time.Time
 	EndTime   time.Time
-	Notes     []string
+	Notes     []Note
 }
 
 func NewJournalEntry() *JournalEntry {
@@ -29,7 +42,7 @@ func (j *JournalEntry) String() string {
 	timeStr := fmt.Sprintf("Start: %s | End: %s | Time: %s", start, end, totalTime)
 	notes := ""
 	for i, note := range j.Notes {
-		notes += fmt.Sprintf("- %s", note)
+		notes += fmt.Sprintf("%s", note.String())
 		// Only append newline character if the note is not the last one
 		if i < len(j.Notes)-1 {
 			notes += "\n"
@@ -39,9 +52,12 @@ func (j *JournalEntry) String() string {
 	return fmt.Sprintf("%s\n%s\n\n%s", headerStr, timeStr, notes)
 }
 
-func (j *JournalEntry) AddNote(note string) error {
-	if note == "" {
+func (j *JournalEntry) AddNote(note Note) error {
+	if note.Contents == "" {
 		return fmt.Errorf("Cannot add empty note")
+	}
+	if len(note.Tags) == 1 && note.Tags[0] == "" {
+		note.Tags = nil
 	}
 	j.Notes = append(j.Notes, note)
 	return nil

@@ -1,6 +1,7 @@
 package journal
 
 import (
+	"fmt"
 	"strconv"
 	"testing"
 	"time"
@@ -58,14 +59,22 @@ func TestFindEntryByID(t *testing.T) {
 	}
 }
 
+func generateNoteSlice(size int, start int) []Note {
+	var notes []Note
+	for i := start; i < size; i++ {
+		notes = append(notes, Note{Contents: fmt.Sprintf("Note %d", i)})
+	}
+	return notes
+}
+
 func TestFetchEntriesByWeek(t *testing.T) {
 	currentDate := time.Now()
 	currYear, currWeek := currentDate.ISOWeek()
 
 	entries := []JournalEntry{
-		{ID: "1", StartTime: time.Now().AddDate(0, 0, -7), Notes: []string{"Note 1", "Note 2"}}, // Entry from one week ago
-		{ID: "2", StartTime: time.Now(), Notes: []string{"Note 3", "Note 4"}},                   // Entry for today
-		{ID: "3", StartTime: time.Now().AddDate(0, 0, 7), Notes: []string{"Note 5", "Note 6"}},  // Entry for next week
+		{ID: "1", StartTime: time.Now().AddDate(0, 0, -7), Notes: generateNoteSlice(2, 0)}, // Entry from one week ago
+		{ID: "2", StartTime: time.Now(), Notes: generateNoteSlice(2, 2)},                   // Entry for today
+		{ID: "3", StartTime: time.Now().AddDate(0, 0, 7), Notes: generateNoteSlice(2, 4)},  // Entry for next week
 	}
 
 	testCases := []struct {
