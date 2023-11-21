@@ -1,6 +1,7 @@
 package journal
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -139,6 +140,33 @@ func TestJournalEntryStringerComponents(t *testing.T) {
 			if lines[i+3] != note {
 				t.Errorf("Expected note: %s, but got: %s", note, lines[i+3])
 			}
+		}
+	})
+}
+
+func TestNoteStringer(t *testing.T) {
+	contents := "Note 1"
+	note := Note{Contents: contents}
+	t.Run("When Note has no tags String returns only formatted Contents field", func(t *testing.T) {
+		expected := fmt.Sprintf("- %s", contents)
+		if note.String() != expected {
+			t.Errorf("Expected [%s], got [%s]", expected, note.String())
+		}
+	})
+	t.Run("When Note has has single Tag String returns formatted Contents field and Tags field with single element", func(t *testing.T) {
+		tags := []string{"Tag1"}
+		note.Tags = tags
+		expected := fmt.Sprintf("- %s %v", contents, tags)
+		if note.String() != expected {
+			t.Errorf("Expected [%s], got [%s]", expected, note.String())
+		}
+	})
+	t.Run("When Note has has multiple Tags String returns formatted Contents field and all tags", func(t *testing.T) {
+		tags := []string{"Tag1", "Tag2"}
+		note.Tags = tags
+		expected := fmt.Sprintf("- %s %v", contents, tags)
+		if note.String() != expected {
+			t.Errorf("Expected [%s], got [%s]", expected, note.String())
 		}
 	})
 }
