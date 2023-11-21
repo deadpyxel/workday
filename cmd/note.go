@@ -29,26 +29,27 @@ Otherwise, it will add the note to the current entry and save the updated journa
 // Otherwise, it adds the note to the current entry and saves the updated journal entries back to the file.
 func addNoteToCurrentDay(cmd *cobra.Command, args []string) error {
 	journalPath := viper.GetString("journalPath")
-	journalEntries, err := journal.LoadEntries(journalPath)
+	entries, err := journal.LoadEntries(journalPath)
 	if err != nil {
 		return err
 	}
 
 	newNote := args[0]
 	tags := strings.Split(tags, ",")
-	if len(tags) == 0 {
-		tags = nil
+	// If the result of the split is a single, empty string, make tags empty
+	if len(tags) == 1 && tags[0] == "" {
+		tags = []string{}
 	}
 
 	now := time.Now()
-	currenctDayId := now.Format("20060102")
-	_, idx := journal.FetchEntryByID(currenctDayId, journalEntries)
+	dayId := now.Format("20060102")
+	_, idx := journal.FetchEntryByID(dayId, entries)
 	if idx == -1 {
 		fmt.Println("Please run `workday start` first to create a new entry.")
 		return fmt.Errorf("Could not find any entry for the current day.")
 	}
-	journalEntries[idx].Notes = append(journalEntries[idx].Notes, journal.Note{Contents: newNote, Tags: tags})
-	err = journal.SaveEntries(journalEntries, journalPath)
+	entries[idx].Notes = append(entries[idx].Notes, journal.Note{Contents: newNote, Tags: tags})
+	err = journal.SaveEntries(entries, journalPath)
 	if err != nil {
 		return err
 	}

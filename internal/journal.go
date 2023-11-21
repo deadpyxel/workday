@@ -6,8 +6,8 @@ import (
 )
 
 type Note struct {
-	Tags     []string `json:"Tags,omitempty"` // Tags for this particular note
 	Contents string   `json:"Contents"`       // Note contents
+	Tags     []string `json:"Tags,omitempty"` // Tags for this particular note
 }
 
 func (n *Note) String() string {
@@ -42,7 +42,7 @@ func (j *JournalEntry) String() string {
 	timeStr := fmt.Sprintf("Start: %s | End: %s | Time: %s", start, end, totalTime)
 	notes := ""
 	for i, note := range j.Notes {
-		notes += fmt.Sprintf("%s", note.String())
+		notes += note.String()
 		// Only append newline character if the note is not the last one
 		if i < len(j.Notes)-1 {
 			notes += "\n"
