@@ -25,7 +25,7 @@ Otherwise, it will edit the note at the specified index and save the updated jou
 
 func editNoteInCurrentDay(cmd *cobra.Command, args []string) error {
 	journalPath := viper.GetString("journalPath")
-	journalEntries, err := journal.LoadEntries(journalPath)
+	entries, err := journal.LoadEntries(journalPath)
 	if err != nil {
 		return err
 	}
@@ -37,20 +37,20 @@ func editNoteInCurrentDay(cmd *cobra.Command, args []string) error {
 	newNote := args[1]
 
 	now := time.Now()
-	currenctDayId := now.Format("20060102")
-	_, idx := journal.FetchEntryByID(currenctDayId, journalEntries)
+	dayId := now.Format("20060102")
+	_, idx := journal.FetchEntryByID(dayId, entries)
 	if idx == -1 {
 		fmt.Println("Please run `workday start` first to create a new entry.")
 		return fmt.Errorf("Could not find any entry for the current day.")
 	}
 
-	if noteIdx < 0 || noteIdx >= len(journalEntries[idx].Notes) {
+	if noteIdx < 0 || noteIdx >= len(entries[idx].Notes) {
 		return fmt.Errorf("The index provided is not valid for the existing notes: %d", noteIdx)
 	}
 
-	journalEntries[idx].Notes[noteIdx] = journal.Note{Contents: newNote}
+	entries[idx].Notes[noteIdx] = journal.Note{Contents: newNote}
 
-	err = journal.SaveEntries(journalEntries, journalPath)
+	err = journal.SaveEntries(entries, journalPath)
 	if err != nil {
 		return err
 	}
