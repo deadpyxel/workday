@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	journal "github.com/deadpyxel/workday/internal"
+	"github.com/deadpyxel/workday/internal/journal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

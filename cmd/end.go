@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	journal "github.com/deadpyxel/workday/internal"
+	"github.com/deadpyxel/workday/internal/journal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -32,7 +32,7 @@ func markDayAsFinished(cmd *cobra.Command, args []string) error {
 	now := time.Now()
 	currentDayId := now.Format("20060102")
 
-	// Load journal entries
+	// Load entries
 	journalPath := viper.GetString("journalPath")
 	entries, err := journal.LoadEntries(journalPath)
 	if err != nil {
