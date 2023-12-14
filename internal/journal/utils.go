@@ -1,6 +1,7 @@
 package journal
 
 import (
+	"errors"
 	"fmt"
 	"time"
 )
@@ -60,4 +61,40 @@ func FetchEntriesByWeekDate(journalEntries []JournalEntry, currentDate time.Time
 	}
 
 	return currentWeekEntries, nil
+}
+
+func FetchEntriesByMonthDate(journalEntries []JournalEntry, currentDate time.Time) ([]JournalEntry, error) {
+	if len(journalEntries) == 0 {
+		return nil, fmt.Errorf("No entries were passed")
+	}
+	var currentMonthEntries []JournalEntry
+
+	// Get the current year and month.
+	currentYear, currentMonth := currentDate.Year(), currentDate.Month()
+
+	for _, entry := range journalEntries {
+		// get the year and month of the entry.
+		entryYear, entryMonth, _ := entry.StartTime.Date()
+
+		// If the entry's year and month match the current year and month, add the entry to the slice.
+		if entryYear == currentYear && entryMonth == currentMonth {
+			currentMonthEntries = append(currentMonthEntries, entry)
+		}
+	}
+	if len(currentMonthEntries) == 0 {
+		return nil, fmt.Errorf("No entries found for the current month")
+	}
+
+	return currentMonthEntries, nil
+}
+
+func CalculateTotalTime(entries []JournalEntry) (time.Duration, error) {
+	var d time.Duration
+	for _, entry := range entries {
+		if !entry.EndTime.After(entry.StartTime) {
+			return 0, errors.New("Invalid entry: end time is before start time")
+		}
+		d += entry.EndTime.Sub(entry.StartTime)
+	}
+	return d, nil
 }

@@ -113,6 +113,48 @@ func TestFetchEntriesByWeek(t *testing.T) {
 	}
 }
 
+func TestCalculateTotalTime(t *testing.T) {
+	t.Run("When slice is empty returns 0 with no errors", func(t *testing.T) {
+		entries := []JournalEntry{}
+		expected := 0 * time.Second
+		result, err := CalculateTotalTime(entries)
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+		if result != expected {
+			t.Errorf("Expected %v, but got %v", expected, result)
+		}
+	})
+	t.Run("When slice contains valid entries, returns expected result with no errors", func(t *testing.T) {
+		entries := []JournalEntry{
+			{StartTime: time.Date(2021, time.January, 1, 10, 0, 0, 0, time.UTC), EndTime: time.Date(2021, time.January, 1, 12, 0, 0, 0, time.UTC)},
+			{StartTime: time.Date(2021, time.January, 1, 14, 0, 0, 0, time.UTC), EndTime: time.Date(2021, time.January, 1, 16, 0, 0, 0, time.UTC)},
+		}
+		expected := 4 * time.Hour
+		result, err := CalculateTotalTime(entries)
+		if err != nil {
+			t.Errorf("Unexpected error: %v", err)
+		}
+		if result != expected {
+			t.Errorf("Expected %v, but got %v", expected, result)
+		}
+	})
+
+	t.Run("When slice contains invalid entries, returns 0 with error", func(t *testing.T) {
+		entries := []JournalEntry{
+			{StartTime: time.Date(2021, time.January, 1, 10, 0, 0, 0, time.UTC), EndTime: time.Date(2021, time.January, 1, 9, 0, 0, 0, time.UTC)},
+		}
+		expected := 0 * time.Second
+		result, err := CalculateTotalTime(entries)
+		if err == nil {
+			t.Errorf("Expected an error, got nil")
+		}
+		if result != expected {
+			t.Errorf("Expected %v, but got %v", expected, result)
+		}
+	})
+}
+
 func BenchmarkFetchEntryByID(b *testing.B) {
 	// Setup entries for benchmark
 	entries := make([]JournalEntry, 1e6)
