@@ -18,7 +18,7 @@ func FetchEntryByID(id string, entries []JournalEntry) (*JournalEntry, int) {
 }
 
 // FetchEntriesByWeekDate filters a slice of JournalEntry objects and returns a new slice
-// containing only the entries from the current week. The function uses the ISO week date
+// containing only the entries from the given date's week. The function uses the ISO week date
 // system, where weeks start on a Monday and the first week of the year is the one that
 // includes at least four days of the new year.
 //
@@ -62,6 +62,25 @@ func FetchEntriesByWeekDate(journalEntries []JournalEntry, currentDate time.Time
 	return currentWeekEntries, nil
 }
 
+// FetchEntriesByMonthDate filters a slice of JournalEntry objects and returns a new slice
+// containing only the entries from the given date's month. The function uses the Year() and Month()
+// functions from time standard library
+//
+// The function takes a slice of JournalEntry objects and iterates over each entry. It
+// checks the start time of each entry and compares it with the current month. If the entry
+// belongs to the current month, it is added to the new slice.
+//
+// If no entries are passed, or no entries belong to the current month, the function returns
+// an error along with an empty slice.
+//
+// Example:
+//
+//	entries := []JournalEntry{...}
+//	currentMonthEntries, err := FetchEntriesByMonthDate(entries)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	fmt.Println(currentMonthEntries) // Prints the entries for the current week
 func FetchEntriesByMonthDate(journalEntries []JournalEntry, currentDate time.Time) ([]JournalEntry, error) {
 	if len(journalEntries) == 0 {
 		return nil, fmt.Errorf("No entries were passed")
