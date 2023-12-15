@@ -1,7 +1,6 @@
 package journal
 
 import (
-	"errors"
 	"fmt"
 	"time"
 )
@@ -88,11 +87,17 @@ func FetchEntriesByMonthDate(journalEntries []JournalEntry, currentDate time.Tim
 	return currentMonthEntries, nil
 }
 
+// CalculateTotalTime calculates the total time duration for a slice of JournalEntry.
+// It iterates over each entry in the slice and checks if the end time of the entry is after the start time.
+// If the end time is not after the start time, it returns an error indicating that the entry is invalid.
+// Otherwise, it adds the difference between the end time and the start time to the total duration.
+// After iterating over all entries, it returns the total duration and nil.
+// If there are no entries in the slice, it returns a duration of 0 and nil.
 func CalculateTotalTime(entries []JournalEntry) (time.Duration, error) {
 	var d time.Duration
 	for _, entry := range entries {
 		if !entry.EndTime.After(entry.StartTime) {
-			return 0, errors.New("Invalid entry: end time is before start time")
+			return 0, fmt.Errorf("Invalid entry %s: end time is before start time", entry.ID)
 		}
 		d += entry.EndTime.Sub(entry.StartTime)
 	}
