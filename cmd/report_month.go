@@ -31,24 +31,24 @@ Otherwise, it prints out the entries.`,
 // It returns nil if there are no errors.
 func reportMonth(cmd *cobra.Command, args []string) error {
 	journalPath := viper.GetString("journalPath")
-	journalEntries, err := journal.LoadEntries(journalPath)
+	entries, err := journal.LoadEntries(journalPath)
 	if err != nil {
 		return err
 	}
 	now := time.Now()
-	currentWeek, err := journal.FetchEntriesByMonthDate(journalEntries, now)
+	currentMonth, err := journal.FetchEntriesByMonthDate(entries, now)
 	if err != nil {
 		return err
 	}
-	for _, entry := range currentWeek {
+	for _, entry := range currentMonth {
 		fmt.Printf("%s\n---\n", entry.String())
 	}
 	month := fmt.Sprintf("%d/%d", now.Month(), now.Year())
-	totalTime, err := journal.CalculateTotalTime(currentWeek)
+	totalTime, err := journal.CalculateTotalTime(currentMonth)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("> %d entries found for %s, totalling %v of work...\n", len(currentWeek), month, totalTime)
+	fmt.Printf("> %d entries found for %s, totalling %v of work...\n", len(currentMonth), month, totalTime)
 	return nil
 }
 
