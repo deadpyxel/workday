@@ -43,11 +43,17 @@ func reportMonth(cmd *cobra.Command, args []string) error {
 	for _, entry := range currentMonth {
 		fmt.Printf("%s\n---\n", entry.String())
 	}
-	month := fmt.Sprintf("%d/%d", now.Month(), now.Year())
+	month := now.Format("January 2006")
+	lunchTime, err := time.ParseDuration(viper.GetString("lunchTime"))
+	if err != nil {
+		return err
+	}
+	totalLunchTime := lunchTime * time.Duration(len(currentMonth))
 	totalTime, err := journal.CalculateTotalTime(currentMonth)
 	if err != nil {
 		return err
 	}
+	totalTime -= totalLunchTime
 	fmt.Printf("> %d entries found for %s, totalling %v of work...\n", len(currentMonth), month, totalTime)
 	return nil
 }
