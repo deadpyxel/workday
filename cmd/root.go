@@ -69,6 +69,7 @@ func initConfig() {
 	home, err := os.UserHomeDir()
 	cobra.CheckErr(err)
 	viper.SetDefault("journalPath", home+"/journal.json")
+	viper.SetDefault("lunchTime", "1h")
 
 	viper.AutomaticEnv() // read in environment variables that match
 
