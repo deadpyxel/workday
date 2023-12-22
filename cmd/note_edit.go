@@ -5,7 +5,9 @@ import (
 	"strconv"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deadpyxel/workday/internal/journal"
+	"github.com/deadpyxel/workday/internal/ui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -46,6 +48,22 @@ func editNoteInCurrentDay(cmd *cobra.Command, args []string) error {
 
 	if noteIdx < 0 || noteIdx >= len(entries[idx].Notes) {
 		return fmt.Errorf("The index provided is not valid for the existing notes: %d", noteIdx)
+	}
+
+	p := tea.NewProgram(ui.NewEditNoteModel(&entries[idx]))
+	if _, err := p.Run(); err != nil {
+		return err
+	}
+
+	editState := ui.NewEditNoteState(&entries[idx].Notes[noteIdx])
+	p = tea.NewProgram(editState)
+	if _, err := p.Run(); err != nil {
+		return err
+	}
+
+	if !editState.Finished {
+		fmt.Println("Edit cancelled.")
+		return nil
 	}
 
 	entries[idx].Notes[noteIdx] = journal.Note{Contents: newNote}
