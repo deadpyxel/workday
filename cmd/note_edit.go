@@ -6,8 +6,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/deadpyxel/workday/cmd/ui"
 	"github.com/deadpyxel/workday/internal/journal"
-	"github.com/deadpyxel/workday/internal/ui"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
