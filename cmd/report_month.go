@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -35,15 +36,26 @@ func reportMonth(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	now := time.Now()
-	currentMonth, err := journal.FetchEntriesByMonthDate(entries, now)
+
+	// Check if the month flag has been set
+	monthFlag, _ := cmd.Flags().GetString("month")
+	var monthFilter time.Time
+	if monthFlag != "" {
+		monthFilter, err = time.Parse("2006-01", monthFlag)
+		if err != nil {
+			return errors.New("invalid month format, expected YYYY-MM")
+		}
+	} else {
+		monthFilter = time.Now()
+	}
+	currentMonth, err := journal.FetchEntriesByMonthDate(entries, monthFilter)
 	if err != nil {
 		return err
 	}
 	for _, entry := range currentMonth {
 		fmt.Printf("%s\n---\n", entry.String())
 	}
-	month := now.Format("January 2006")
+	month := monthFilter.Format("January 2006")
 	lunchTime, err := time.ParseDuration(viper.GetString("lunchTime"))
 	if err != nil {
 		return err
@@ -59,5 +71,6 @@ func reportMonth(cmd *cobra.Command, args []string) error {
 }
 
 func init() {
+	reportMonthCmd.Flags().StringP("month", "m", "", "Specify the month and year in the format YYYY-MM")
 	reportCmd.AddCommand(reportMonthCmd)
 }

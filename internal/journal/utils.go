@@ -81,14 +81,14 @@ func FetchEntriesByWeekDate(journalEntries []JournalEntry, currentDate time.Time
 //	    log.Fatal(err)
 //	}
 //	fmt.Println(currentMonthEntries) // Prints the entries for the current week
-func FetchEntriesByMonthDate(journalEntries []JournalEntry, currentDate time.Time) ([]JournalEntry, error) {
+func FetchEntriesByMonthDate(journalEntries []JournalEntry, filterDate time.Time) ([]JournalEntry, error) {
 	if len(journalEntries) == 0 {
 		return nil, fmt.Errorf("No entries were passed")
 	}
 	var currentMonthEntries []JournalEntry
 
 	// Get the current year and month.
-	currentYear, currentMonth := currentDate.Year(), currentDate.Month()
+	currentYear, currentMonth := filterDate.Year(), filterDate.Month()
 
 	for _, entry := range journalEntries {
 		// get the year and month of the entry.
