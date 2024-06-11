@@ -24,6 +24,7 @@ After running this command, you can begin adding notes to the new workday entry.
 
 // startWorkDay starts a new workday entry in the journal.
 // It first loads the existing journal entries from the file.
+// If the last entry on the journal was not closed properly (misisng EndTime) it will offer to update that first
 // If there is already an entry for the current day, it asks the user if they want to override it.
 // If the user agrees, it overwrites the existing entry with a new one.
 // If the user does not agree, it does nothing and returns nil.
@@ -32,15 +33,55 @@ After running this command, you can begin adding notes to the new workday entry.
 // It then prints a message indicating that a new JournalEntry has been added for the current day.
 func startWorkDay(cmd *cobra.Command, args []string) error {
 	journalPath := viper.GetString("journalPath")
-	journalEntries, err := journal.LoadEntries(journalPath)
+	entries, err := journal.LoadEntries(journalPath)
 	if err != nil {
 		return err
 	}
 
 	now := time.Now()
-	currenctDayId := now.Format("20060102")
+	currentDayId := now.Format("20060101")
+	var lastEntry *journal.JournalEntry
+	for i := len(entries) - 1; i >= 0; i-- {
+		if entries[i].ID[:8] != currentDayId {
+			lastEntry = &entries[i]
+			break
+		}
+	}
+	// If the last entry has no EndTime set (considering it is not the entry for the current day)
+	if lastEntry != nil && lastEntry.EndTime.IsZero() {
+		fmt.Println("Warning: Last entry has no EndTime set.")
+		fmt.Printf("Do you want to set the EndTime for the last entry? (y/N): ")
+		userInput, err := getUserInput()
+		if err != nil {
+			return err
+		}
+		if userInput == "y" {
+			fmt.Printf("Please type the EndTime in HH:MM format: ")
+			endTimeStr, err := getUserInput()
+			if err != nil {
+				return err
+			}
+			endTime, err := time.Parse("15:04", endTimeStr)
+			if err != nil {
+				return err
+			}
+			finalEndTime := time.Date(
+				lastEntry.StartTime.Year(),
+				lastEntry.StartTime.Month(),
+				lastEntry.StartTime.Day(),
+				endTime.Hour(),
+				endTime.Minute(),
+				0,
+				0,
+				lastEntry.StartTime.Location())
+			lastEntry.EndTime = finalEndTime
+
+			fmt.Println("Endtime set for the last entry.")
+		}
+	}
+
 	dateStr := now.Format("2006-01-02")
-	_, idx := journal.FetchEntryByID(currenctDayId, journalEntries)
+	_, idx := journal.FetchEntryByID(currentDayId, entries)
 	if idx != -1 {
 		fmt.Printf("There is already an entry for %s. Do you want to override it? (y/N): ", dateStr)
 		userInput, err := getUserInput()
@@ -51,14 +92,14 @@ func startWorkDay(cmd *cobra.Command, args []string) error {
 			fmt.Println("No changes made...")
 			return nil
 		}
-		journalEntries[idx] = *journal.NewJournalEntry()
+		entries[idx] = *journal.NewJournalEntry()
 		fmt.Printf("Data for %s overwrote.", dateStr)
 		return nil
 	}
 	newEntry := journal.NewJournalEntry()
-	journalEntries = append(journalEntries, *newEntry)
+	entries = append(entries, *newEntry)
 	fmt.Printf("Added new Journal Entry for %s\n", dateStr)
-	return journal.SaveEntries(journalEntries, journalPath)
+	return journal.SaveEntries(entries, journalPath)
 }
 
 func getUserInput() (string, error) {
