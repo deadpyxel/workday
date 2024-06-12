@@ -39,7 +39,7 @@ func startWorkDay(cmd *cobra.Command, args []string) error {
 	}
 
 	now := time.Now()
-	currentDayId := now.Format("20060101")
+	currentDayId := now.Format("20060102")
 	var lastEntry *journal.JournalEntry
 	for i := len(entries) - 1; i >= 0; i-- {
 		if entries[i].ID[:8] != currentDayId {
@@ -76,6 +76,11 @@ func startWorkDay(cmd *cobra.Command, args []string) error {
 				lastEntry.StartTime.Location())
 			lastEntry.EndTime = finalEndTime
 
+			err = journal.SaveEntries(entries, journalPath)
+			if err != nil {
+				return err
+			}
+
 			fmt.Println("Endtime set for the last entry.")
 		}
 	}
@@ -93,8 +98,8 @@ func startWorkDay(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		entries[idx] = *journal.NewJournalEntry()
-		fmt.Printf("Data for %s overwrote.", dateStr)
-		return nil
+		fmt.Printf("Data for %s overwrote. Saving...", dateStr)
+		return journal.SaveEntries(entries, journalPath)
 	}
 	newEntry := journal.NewJournalEntry()
 	entries = append(entries, *newEntry)
