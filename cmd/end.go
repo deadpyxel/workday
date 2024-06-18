@@ -31,6 +31,7 @@ func markDayAsFinished(cmd *cobra.Command, args []string) error {
 	// Get current date
 	now := time.Now()
 	currentDayId := now.Format("20060102")
+	dateStr := now.Format("2006-01-02")
 
 	// Load entries
 	journalPath := viper.GetString("journalPath")
@@ -40,13 +41,28 @@ func markDayAsFinished(cmd *cobra.Command, args []string) error {
 	}
 
 	// Get the index of the entry on the slice, -1 if not found
-	_, entryIndex := journal.FetchEntryByID(currentDayId, entries)
+	entry, idx := journal.FetchEntryByID(currentDayId, entries)
 
-	if entryIndex == -1 {
+	if idx == -1 {
 		return fmt.Errorf("No entry found for the current day")
 	}
 
-	entries[entryIndex].EndDay()
+	if !entry.EndTime.IsZero() {
+		fmt.Printf("There is already an EndTime for %s. Do you want to override it? (y/N): ", dateStr)
+		userInput, err := getUserInput()
+		if err != nil {
+			return err
+		}
+		if userInput != "y" {
+			fmt.Println("No changes made...")
+			return nil
+		}
+		entry.EndDay()
+		entries[idx] = *entry
+		fmt.Printf("Data for %s overwrote. Saving...", dateStr)
+	} else {
+		entries[idx].EndDay()
+	}
 
 	err = journal.SaveEntries(entries, journalPath)
 	if err != nil {
