@@ -18,11 +18,18 @@ func (n *Note) String() string {
 	return fmt.Sprintf("- %s%s", n.Contents, tags)
 }
 
+type Break struct {
+	StartTime time.Time `json:"start_time"`
+	EndTime   time.Time `json:"end_time"`
+	Reason    string    `json:"reason"`
+}
+
 type JournalEntry struct {
-	ID        string
-	StartTime time.Time
-	EndTime   time.Time
-	Notes     []Note
+	ID        string    `json:"id"`
+	StartTime time.Time `json:"start_time"`
+	EndTime   time.Time `json:"end_time"`
+	Notes     []Note    `json:"notes"`
+	Breaks    []Break   `json:"breaks"`
 }
 
 func NewJournalEntry() *JournalEntry {
