@@ -28,8 +28,8 @@ type JournalEntry struct {
 	ID        string    `json:"id"`
 	StartTime time.Time `json:"start_time"`
 	EndTime   time.Time `json:"end_time"`
-	Notes     []Note    `json:"notes"`
-	Breaks    []Break   `json:"breaks"`
+	Notes     []Note    `json:"notes,omitempty"`
+	Breaks    []Break   `json:"breaks,omitempty"`
 }
 
 func NewJournalEntry() *JournalEntry {
