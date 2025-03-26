@@ -37,7 +37,20 @@ func reportWorkDay(cmd *cobra.Command, args []string) error {
 	if currentEntry == nil {
 		return fmt.Errorf("Could not find any entry for the current day.")
 	}
-	fmt.Println(currentEntry)
+	fmt.Println(currentEntry) // Print basic work info
+
+	// Prints break information
+	if len(currentEntry.Breaks) > 0 {
+		fmt.Printf("\nBreaks:\n")
+		for _, br := range currentEntry.Breaks {
+			startTime := br.StartTime.Format("15:04:05")
+			endTime := "Ongoing"
+			if !br.EndTime.IsZero() {
+				endTime = br.EndTime.Format("15:04:05")
+			}
+			fmt.Printf("\t- Start: %s, End: %s, Reason: %s\n", startTime, endTime, br.Reason)
+		}
+	}
 	return nil
 }
 
