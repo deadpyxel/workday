@@ -73,11 +73,13 @@ func LoadEntries(filename string) ([]JournalEntry, error) {
 	var journalData Journal
 	err = json.Unmarshal(data, &journalData)
 	if err != nil {
+		fmt.Println("Error unmarshaling, will attempt to use older format...")
 		//If we reach this section, it probably means we are using an old format file
 		var oldEntries []JournalEntry
 
 		err = json.Unmarshal(data, &oldEntries)
 		if err != nil {
+			fmt.Printf("error unmarshaling using the old format: %v\n", err)
 			return nil, err
 		}
 		journalData = Journal{
