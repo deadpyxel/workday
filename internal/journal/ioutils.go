@@ -3,6 +3,7 @@ package journal
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 )
 
@@ -24,7 +25,7 @@ import (
 //	    log.Fatal(err)
 //	}
 func SaveEntries(journalEntries []JournalEntry, filename string) error {
-	data, err := json.Marshal(journalEntries)
+	data, err := json.Marshal(Journal{Version: SchemaVersion, Entries: journalEntries})
 	if err != nil {
 		return err
 	}
@@ -53,7 +54,13 @@ func LoadEntries(filename string) ([]JournalEntry, error) {
 	if err != nil {
 		// if the file does not exist, create it and return an empty slice
 		if errors.Is(err, os.ErrNotExist) {
-			_, err := os.Create(filename)
+			// Create a new file with the current schema version
+			emptyJournal := Journal{Version: SchemaVersion, Entries: []JournalEntry{}}
+			jsonData, err := json.Marshal(emptyJournal)
+			if err != nil {
+				return nil, err
+			}
+			err = os.WriteFile(filename, jsonData, 0644)
 			if err != nil {
 				return nil, err
 			}
@@ -63,12 +70,45 @@ func LoadEntries(filename string) ([]JournalEntry, error) {
 		return nil, err
 	}
 
-	// Unmarshal JSON data into a slice of JournalEntry
-	var entries []JournalEntry
-	err = json.Unmarshal(data, &entries)
+	var journalData Journal
+	err = json.Unmarshal(data, &journalData)
 	if err != nil {
-		return nil, err
+		//If we reach this section, it probably means we are using an old format file
+		var oldEntries []JournalEntry
+
+		err = json.Unmarshal(data, &oldEntries)
+		if err != nil {
+			return nil, err
+		}
+		journalData = Journal{
+			Version: SchemaVersion,
+			Entries: migrateEntries(oldEntries, 0),
+		}
 	}
 
-	return entries, nil
+	// Handle migration if necessary
+	if journalData.Version < SchemaVersion {
+		fmt.Printf("Detected outdated schema version %d, updating to %d...\n", journalData.Version, SchemaVersion)
+		journalData.Entries = migrateEntries(journalData.Entries, journalData.Version)
+		journalData.Version = SchemaVersion
+		// Save the migrated data back to the file
+		err = SaveEntries(journalData.Entries, filename)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return journalData.Entries, nil
+}
+
+func migrateEntries(entries []JournalEntry, version int) []JournalEntry {
+	if version < 1 {
+		// Adds default empty breaks to entries
+		for i := range entries {
+			if entries[i].Breaks == nil {
+				entries[i].Breaks = []Break{}
+			}
+		}
+	}
+	return entries
 }

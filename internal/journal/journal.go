@@ -38,6 +38,13 @@ func NewJournalEntry() *JournalEntry {
 	return &JournalEntry{ID: id, StartTime: time.Now()}
 }
 
+type Journal struct {
+	Version int            `json:"version"` // schema version for the loaded journal
+	Entries []JournalEntry `json:"entries"` // journal entries
+}
+
+const SchemaVersion = 1
+
 func (j *JournalEntry) String() string {
 	start := j.StartTime.Format("15:04:05")
 	end := j.EndTime.Format("15:04:05")
