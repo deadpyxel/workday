@@ -41,9 +41,20 @@ func NewJournalEntry() *JournalEntry {
 func (j *JournalEntry) String() string {
 	start := j.StartTime.Format("15:04:05")
 	end := j.EndTime.Format("15:04:05")
-	totalTime := j.EndTime.Sub(j.StartTime).String()
+	var totalBreakTime time.Duration
+	if len(j.Breaks) > 0 {
+		for _, br := range j.Breaks {
+			if br.EndTime.IsZero() {
+				continue
+			}
+			totalBreakTime += br.EndTime.Sub(br.StartTime)
+		}
+	}
+	totalWorkTime := j.EndTime.Sub(j.StartTime)
+	totalWorkTime -= totalBreakTime
+	totalTime := totalWorkTime.String()
 	if j.EndTime.IsZero() {
-		end = "Not yet closed"
+		end = "Ongoing"
 		totalTime = "N/A"
 	}
 	timeStr := fmt.Sprintf("Start: %s | End: %s | Time: %s", start, end, totalTime)
