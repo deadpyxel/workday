@@ -93,7 +93,7 @@ func TestJournalEntryStringer(t *testing.T) {
 			Notes:     notes,
 		}
 
-		expected := "Date: 2021-01-01\nStart: 12:00:00 | End: Not yet closed | Time: N/A\n\n- Note 1\n- Note 2"
+		expected := "Date: 2021-01-01\nStart: 12:00:00 | End: Ongoing | Time: N/A\n\n- Note 1\n- Note 2"
 		result := journalEntry.String()
 
 		if result != expected {

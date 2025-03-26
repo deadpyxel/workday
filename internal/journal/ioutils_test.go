@@ -123,23 +123,23 @@ func TestSaveEntries(t *testing.T) {
 
 		// Use the SaveEntries function to write the entries to the temporary file.
 		if err := SaveEntries(entries, tmpfile.Name()); err != nil {
-			t.Fatal(err)
+			t.Errorf("Error saving entries: %v\n", err)
 		}
 
 		data, err := os.ReadFile(tmpfile.Name())
 		if err != nil {
-			t.Fatal(err)
+			t.Errorf("Error reading file contents: %v\n", err)
 		}
 
 		// Load the entries from the file.
-		var loadedEntries []JournalEntry
+		var loadedEntries Journal
 		if err := json.Unmarshal(data, &loadedEntries); err != nil {
-			t.Fatal(err)
+			t.Errorf("Error unmarshaling loaded entries: %v\n", err)
 		}
 
 		// Check if the loaded entries match the original entries.
-		if !reflect.DeepEqual(loadedEntries, entries) {
-			t.Errorf("Expected: %+v, but got: %+v", entries, loadedEntries)
+		if !reflect.DeepEqual(loadedEntries.Entries, entries) {
+			t.Errorf("Expected: %+v, but got: %+v\n", entries, loadedEntries)
 		}
 	})
 }
