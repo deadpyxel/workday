@@ -39,20 +39,18 @@ func reportMonth(cmd *cobra.Command, args []string) error {
 
 	// Check if the month flag has been set
 	monthFlag, _ := cmd.Flags().GetString("month")
-	var monthFilter time.Time
+	monthFilter := time.Now()
 	if monthFlag != "" {
 		monthFilter, err = time.Parse("2006-01", monthFlag)
 		if err != nil {
 			return errors.New("invalid month format, expected YYYY-MM")
 		}
-	} else {
-		monthFilter = time.Now()
 	}
-	currentMonth, err := journal.FetchEntriesByMonthDate(entries, monthFilter)
+	currMonth, err := journal.FetchEntriesByMonthDate(entries, monthFilter)
 	if err != nil {
 		return err
 	}
-	for _, entry := range currentMonth {
+	for _, entry := range currMonth {
 		fmt.Printf("%s\n---\n", entry.String())
 	}
 	month := monthFilter.Format("January 2006")
@@ -60,13 +58,28 @@ func reportMonth(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	totalLunchTime := lunchTime * time.Duration(len(currentMonth))
-	totalTime, err := journal.CalculateTotalTime(currentMonth)
-	if err != nil {
-		return err
+	var totalWorkTime time.Duration
+
+	for _, entry := range currMonth {
+		dayWorkTime := entry.EndTime.Sub(entry.StartTime)
+		var totalBreakTime time.Duration
+
+		// Calculate total breaktime
+		for _, br := range entry.Breaks {
+			if !br.EndTime.IsZero() {
+				totalBreakTime += br.EndTime.Sub(br.StartTime)
+			}
+		}
+
+		// If no breaks were recorded, subtract default lunchTime
+		if len(entries) == 0 {
+			totalBreakTime = lunchTime
+		}
+		dayWorkTime -= totalBreakTime
+		totalWorkTime += dayWorkTime
 	}
-	totalTime -= totalLunchTime
-	fmt.Printf("> %d entries found for %s, totalling %v of work...\n", len(currentMonth), month, totalTime)
+
+	fmt.Printf("> %d entries found for %s, totalling %v of work...\n", len(currMonth), month, totalWorkTime)
 	return nil
 }
 
