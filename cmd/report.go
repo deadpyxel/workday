@@ -9,6 +9,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+var reportDate string
+
 // reportCmd represents the report command
 var reportCmd = &cobra.Command{
 	Use:   "report",
@@ -31,18 +33,30 @@ func reportWorkDay(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	now := time.Now()
-	currenctDayId := now.Format("20060102")
-	currentEntry, _ := journal.FetchEntryByID(currenctDayId, journalEntries)
-	if currentEntry == nil {
-		return fmt.Errorf("Could not find any entry for the current day.")
+
+	var tgtEntry *journal.JournalEntry
+	// If no date is provided, report the current day
+	tgtDay := time.Now()
+
+	if reportDate != "" {
+		// if a date is provided, try to parse it and find the correponding entry
+		tgtDay, err = time.Parse("2006-01-02", reportDate)
+		if err != nil {
+			return fmt.Errorf("invalid date format, Use YYYY-MM-DD: %v", err)
+		}
 	}
-	fmt.Println(currentEntry) // Print basic work info
+
+	tgtDayID := tgtDay.Format("20060102")
+	tgtEntry, _ = journal.FetchEntryByID(tgtDayID, journalEntries)
+	if tgtEntry == nil {
+		return fmt.Errorf("Could not find any entry for the date: %s", reportDate)
+	}
+	fmt.Println(tgtEntry) // Print basic work info
 
 	// Prints break information
-	if len(currentEntry.Breaks) > 0 {
+	if len(tgtEntry.Breaks) > 0 {
 		fmt.Printf("\nBreaks:\n")
-		for _, br := range currentEntry.Breaks {
+		for _, br := range tgtEntry.Breaks {
 			startTime := br.StartTime.Format("15:04:05")
 			endTime := "Ongoing"
 			if !br.EndTime.IsZero() {
@@ -56,4 +70,7 @@ func reportWorkDay(cmd *cobra.Command, args []string) error {
 
 func init() {
 	rootCmd.AddCommand(reportCmd)
+
+	// Specify date for report
+	reportCmd.Flags().StringVarP(&reportDate, "date", "d", "", "Specify the date in YYYY-MM-DD format")
 }
