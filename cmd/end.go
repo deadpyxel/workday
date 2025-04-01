@@ -64,6 +64,13 @@ func markDayAsFinished(cmd *cobra.Command, args []string) error {
 		entries[idx].EndDay()
 	}
 
+	err = validateEntry(entry)
+	if err != nil {
+		fmt.Printf("\nFound issues with entry: %v", err)
+		validationNote := journal.Note{Contents: fmt.Sprintf("Validation Error: %s", err)}
+		entry.AddNote(validationNote)
+	}
+
 	err = journal.SaveEntries(entries, journalPath)
 	if err != nil {
 		return fmt.Errorf("Failed to save journal entries: %v\n", err)
@@ -73,14 +80,37 @@ func markDayAsFinished(cmd *cobra.Command, args []string) error {
 
 func init() {
 	rootCmd.AddCommand(endCmd)
+}
 
-	// Here you will define your flags and configuration settings.
+func validateEntry(entry *journal.JournalEntry) error {
+	minWorkTime, err := time.ParseDuration(viper.GetString("minWorkTime"))
+	if err != nil {
+		return fmt.Errorf("invalid minimum work time format in config: %v", err)
+	}
+	lunchTime, err := time.ParseDuration(viper.GetString("lunchTime"))
+	if err != nil {
+		return fmt.Errorf("invalid lunch time format in config: %v", err)
+	}
+	maxWorkTime, err := time.ParseDuration(viper.GetString("maxWorkTime"))
+	if err != nil {
+		return fmt.Errorf("invalid maximum work time format in config: %v", err)
+	}
 
-	// Cobra supports Persistent Flags which will work for this command
-	// and all subcommands, e.g.:
-	// endCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// Check if total work time (accounting for breaks) is less than minimum
+	if entry.TotalWorkTime() < minWorkTime {
+		return fmt.Errorf("total work time (%s) is less than the minimum required (%s)", entry.TotalWorkTime().String(), minWorkTime.String())
+	}
+	// Check if total work time (accounting for breaks) above allowed maximum
+	if entry.TotalWorkTime() > maxWorkTime {
+		return fmt.Errorf("total work time (%s) exceeds the maximum allowed (%s) by %s", entry.TotalWorkTime().String(), maxWorkTime.String(), entry.TotalWorkTime()-maxWorkTime)
+	}
 
-	// Cobra supports local flags which will only run when this command
-	// is called directly, e.g.:
-	// endCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// Check if there's at least one break of `lunchtime` duration
+	for _, br := range entry.Breaks {
+		if br.Duration() >= lunchTime {
+			return nil
+		}
+	}
+	// If not, return an error
+	return fmt.Errorf("did not find any breaks during the day that have at least (%s) for lunchtime break.", lunchTime)
 }

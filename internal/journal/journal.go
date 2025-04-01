@@ -24,6 +24,15 @@ type Break struct {
 	Reason    string    `json:"reason"`
 }
 
+func (b *Break) Duration() time.Duration {
+	var total time.Duration
+	if b.EndTime.IsZero() {
+		return total
+	}
+	total = b.EndTime.Sub(b.StartTime)
+	return total
+}
+
 type JournalEntry struct {
 	ID        string    `json:"id"`
 	StartTime time.Time `json:"start_time"`
@@ -90,4 +99,23 @@ func (j *JournalEntry) AddNote(note Note) error {
 
 func (j *JournalEntry) EndDay() {
 	j.EndTime = time.Now()
+}
+
+func (j *JournalEntry) TotalWorkTime() time.Duration {
+	var totalWorkTime time.Duration
+	if j.EndTime.IsZero() {
+		return totalWorkTime
+	}
+	totalWorkTime = j.EndTime.Sub(j.StartTime)
+
+	var totalBreakTime time.Duration
+	for _, br := range j.Breaks {
+		if !br.EndTime.IsZero() {
+			totalBreakTime += br.Duration()
+		}
+	}
+
+	totalWorkTime -= totalBreakTime
+
+	return totalWorkTime
 }

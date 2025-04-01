@@ -70,6 +70,8 @@ func initConfig() {
 	cobra.CheckErr(err)
 	viper.SetDefault("journalPath", home+"/journal.json")
 	viper.SetDefault("lunchTime", "1h")
+	viper.SetDefault("minWorkTime", "8h")
+	viper.SetDefault("maxWorkTime", "10h")
 
 	viper.AutomaticEnv() // read in environment variables that match
 
