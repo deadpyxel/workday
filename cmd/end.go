@@ -96,13 +96,15 @@ func validateEntry(entry *journal.JournalEntry) error {
 		return fmt.Errorf("invalid maximum work time format in config: %v", err)
 	}
 
+	totalWorkTime := entry.TotalWorkTime()
+
 	// Check if total work time (accounting for breaks) is less than minimum
-	if entry.TotalWorkTime() < minWorkTime {
-		return fmt.Errorf("total work time (%s) is less than the minimum required (%s)", entry.TotalWorkTime().String(), minWorkTime.String())
+	if totalWorkTime < minWorkTime {
+		return fmt.Errorf("total work time (%s) is less than the minimum required (%s)", totalWorkTime.String(), minWorkTime.String())
 	}
 	// Check if total work time (accounting for breaks) above allowed maximum
-	if entry.TotalWorkTime() > maxWorkTime {
-		return fmt.Errorf("total work time (%s) exceeds the maximum allowed (%s) by %s", entry.TotalWorkTime().String(), maxWorkTime.String(), entry.TotalWorkTime()-maxWorkTime)
+	if totalWorkTime > maxWorkTime {
+		return fmt.Errorf("total work time (%s) exceeds the maximum allowed (%s) by %s", totalWorkTime.String(), maxWorkTime.String(), totalWorkTime-maxWorkTime)
 	}
 
 	// Check if there's at least one break of `lunchtime` duration
