@@ -2,8 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/deadpyxel/workday/internal/journal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -56,8 +59,27 @@ func startBreak(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Break started at %s\n", now.Format("15:04:05"))
-	return nil
+	// Calculate daily break statistics
+	totalDayBreaks := len(entry.Breaks)
+	var totalBreakTime time.Duration
+	for _, br := range entry.Breaks {
+		if !br.EndTime.IsZero() {
+			totalBreakTime += br.EndTime.Sub(br.StartTime)
+		}
+	}
+
+	// Create and run the Bubble Tea program for styled confirmation
+	model := breakModel{
+		isStarting:     true,
+		breakTime:      now,
+		reason:         breakReason,
+		totalDayBreaks: totalDayBreaks,
+		totalBreakTime: totalBreakTime,
+	}
+
+	p := tea.NewProgram(&model)
+	_, err = p.Run()
+	return err
 }
 
 var breakStopCmd = &cobra.Command{
@@ -65,6 +87,151 @@ var breakStopCmd = &cobra.Command{
 	Short: "stops a current work break",
 	Long:  "Stops the current work break, recording the end time.",
 	RunE:  stopBreak,
+}
+
+type breakModel struct {
+	isStarting      bool
+	breakTime       time.Time
+	reason          string
+	duration        *time.Duration
+	totalDayBreaks  int
+	totalBreakTime  time.Duration
+	width           int
+	height          int
+	quitting        bool
+}
+
+func (m breakModel) Init() tea.Cmd {
+	return nil
+}
+
+func (m breakModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q", "esc", "ctrl+c":
+			m.quitting = true
+			return m, tea.Quit
+		}
+	}
+
+	return m, nil
+}
+
+func (m breakModel) View() string {
+	if m.quitting {
+		return ""
+	}
+
+	// Define styles consistent with other commands
+	titleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("86")).
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderBottom(true).
+		BorderForeground(lipgloss.Color("86")).
+		MarginBottom(1).
+		PaddingBottom(1)
+
+	sectionStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("39")).
+		MarginTop(1).
+		MarginBottom(1)
+
+	labelStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("212")).
+		Width(12)
+
+	valueStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("252"))
+
+	successStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("120"))
+
+	infoStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("214"))
+
+	helpStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("241")).
+		MarginTop(2)
+
+	var content strings.Builder
+
+	// Title based on action
+	if m.isStarting {
+		content.WriteString(titleStyle.Render("☕ Break Started"))
+	} else {
+		content.WriteString(titleStyle.Render("✅ Break Ended"))
+	}
+	content.WriteString("\n\n")
+
+	// Break Details Section
+	content.WriteString(sectionStyle.Render("🕐 Break Details"))
+	content.WriteString("\n")
+
+	breakTime := m.breakTime.Format("15:04")
+	if m.isStarting {
+		content.WriteString(labelStyle.Render("Started:") + " " + valueStyle.Render(breakTime))
+	} else {
+		content.WriteString(labelStyle.Render("Ended:") + " " + valueStyle.Render(breakTime))
+	}
+	content.WriteString("\n")
+
+	if m.reason != "" {
+		content.WriteString(labelStyle.Render("Reason:") + " " + valueStyle.Render(m.reason))
+		content.WriteString("\n")
+	}
+
+	if m.duration != nil {
+		hours := int(m.duration.Hours())
+		minutes := int(m.duration.Minutes()) % 60
+		durationStr := fmt.Sprintf("%dh %dm", hours, minutes)
+		if hours == 0 {
+			durationStr = fmt.Sprintf("%dm", minutes)
+		}
+		content.WriteString(labelStyle.Render("Duration:") + " " + successStyle.Render(durationStr))
+		content.WriteString("\n")
+	}
+
+	// Daily Summary Section
+	content.WriteString("\n")
+	content.WriteString(sectionStyle.Render("📊 Today's Summary"))
+	content.WriteString("\n")
+
+	content.WriteString(labelStyle.Render("Breaks:") + " " + valueStyle.Render(fmt.Sprintf("%d taken", m.totalDayBreaks)))
+	content.WriteString("\n")
+
+	if m.totalBreakTime > 0 {
+		totalHours := int(m.totalBreakTime.Hours())
+		totalMinutes := int(m.totalBreakTime.Minutes()) % 60
+		totalTimeStr := fmt.Sprintf("%dh %dm", totalHours, totalMinutes)
+		if totalHours == 0 {
+			totalTimeStr = fmt.Sprintf("%dm", totalMinutes)
+		}
+		content.WriteString(labelStyle.Render("Total Time:") + " " + valueStyle.Render(totalTimeStr))
+		content.WriteString("\n")
+	}
+
+	// Action guidance
+	content.WriteString("\n")
+	if m.isStarting {
+		content.WriteString(infoStyle.Render("💡 Stop your break with: workday break stop"))
+	} else {
+		content.WriteString(successStyle.Render("🎯 Ready to continue working!"))
+	}
+	content.WriteString("\n")
+
+	// Help
+	content.WriteString(helpStyle.Render("Press 'q' or 'esc' to quit"))
+
+	return content.String()
 }
 
 func stopBreak(cmd *cobra.Command, args []string) error {
@@ -98,8 +265,29 @@ func stopBreak(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	fmt.Printf("Break stopped at %s\n", now.Format("15:04:05"))
-	return nil
+	// Calculate break duration and daily statistics
+	breakDuration := now.Sub(lastBreak.StartTime)
+	totalDayBreaks := len(entry.Breaks)
+	var totalBreakTime time.Duration
+	for _, br := range entry.Breaks {
+		if !br.EndTime.IsZero() {
+			totalBreakTime += br.EndTime.Sub(br.StartTime)
+		}
+	}
+
+	// Create and run the Bubble Tea program for styled confirmation
+	model := breakModel{
+		isStarting:     false,
+		breakTime:      now,
+		reason:         lastBreak.Reason,
+		duration:       &breakDuration,
+		totalDayBreaks: totalDayBreaks,
+		totalBreakTime: totalBreakTime,
+	}
+
+	p := tea.NewProgram(&model)
+	_, err = p.Run()
+	return err
 }
 
 func init() {
