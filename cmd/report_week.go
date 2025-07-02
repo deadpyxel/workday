@@ -67,11 +67,34 @@ func (m reportWeekModel) View() string {
 		MarginBottom(1).
 		PaddingBottom(1)
 
+	sectionStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("39")).
+		MarginTop(1).
+		MarginBottom(1)
+
 	entryStyle := lipgloss.NewStyle().
 		BorderStyle(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("240")).
 		Padding(1).
 		MarginBottom(1)
+
+	labelStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("212")).
+		Width(12)
+
+	valueStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("252"))
+
+	noteStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("159")).
+		PaddingLeft(2).
+		MarginBottom(1)
+
+	breakStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("214")).
+		PaddingLeft(2)
 
 	helpStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("241")).
@@ -88,9 +111,88 @@ func (m reportWeekModel) View() string {
 	content.WriteString(titleStyle.Render(fmt.Sprintf("Weekly Report - %s", weekStr)))
 	content.WriteString("\n\n")
 
-	// Entries with basic styling
+	// Daily Entries Section
+	content.WriteString(sectionStyle.Render("📅 Daily Entries"))
+	content.WriteString("\n")
+
+	// Format each entry with proper structure
 	for _, entry := range m.entries {
-		content.WriteString(entryStyle.Render(entry.String()))
+		var entryContent strings.Builder
+
+		// Date header
+		date := entry.StartTime.Format("Mon, Jan 2")
+		entryContent.WriteString(labelStyle.Render("Date:") + " " + valueStyle.Render(date))
+		entryContent.WriteString("\n")
+
+		// Work hours
+		startTime := entry.StartTime.Format("15:04")
+		entryContent.WriteString(labelStyle.Render("Start:") + " " + valueStyle.Render(startTime))
+		entryContent.WriteString("\n")
+
+		endTime := "Ongoing"
+		if !entry.EndTime.IsZero() {
+			endTime = entry.EndTime.Format("15:04")
+		}
+		entryContent.WriteString(labelStyle.Render("End:") + " " + valueStyle.Render(endTime))
+		entryContent.WriteString("\n")
+
+		// Duration calculation
+		if !entry.EndTime.IsZero() {
+			duration := entry.EndTime.Sub(entry.StartTime)
+
+			// Subtract break time
+			for _, br := range entry.Breaks {
+				if !br.EndTime.IsZero() {
+					duration -= br.EndTime.Sub(br.StartTime)
+				}
+			}
+
+			hours := int(duration.Hours())
+			minutes := int(duration.Minutes()) % 60
+			entryContent.WriteString(labelStyle.Render("Duration:") + " " + valueStyle.Render(fmt.Sprintf("%dh %dm", hours, minutes)))
+		} else {
+			entryContent.WriteString(labelStyle.Render("Duration:") + " " + valueStyle.Render("In progress"))
+		}
+		entryContent.WriteString("\n")
+
+		// Breaks (if any)
+		if len(entry.Breaks) > 0 {
+			entryContent.WriteString("\n")
+			entryContent.WriteString(labelStyle.Render("Breaks:"))
+			entryContent.WriteString("\n")
+			for i, br := range entry.Breaks {
+				startTime := br.StartTime.Format("15:04")
+				endTime := "Ongoing"
+				if !br.EndTime.IsZero() {
+					endTime = br.EndTime.Format("15:04")
+				}
+
+				breakText := fmt.Sprintf("%d. %s - %s", i+1, startTime, endTime)
+				if br.Reason != "" {
+					breakText += fmt.Sprintf(" (%s)", br.Reason)
+				}
+
+				entryContent.WriteString(breakStyle.Render(breakText))
+				entryContent.WriteString("\n")
+			}
+		}
+
+		// Notes (if any)
+		if len(entry.Notes) > 0 {
+			entryContent.WriteString("\n")
+			entryContent.WriteString(labelStyle.Render("Notes:"))
+			entryContent.WriteString("\n")
+			for i, note := range entry.Notes {
+				noteText := fmt.Sprintf("%d. %s", i+1, note.Contents)
+				if len(note.Tags) > 0 {
+					noteText += fmt.Sprintf(" [%s]", strings.Join(note.Tags, ", "))
+				}
+				entryContent.WriteString(noteStyle.Render(noteText))
+				entryContent.WriteString("\n")
+			}
+		}
+
+		content.WriteString(entryStyle.Render(entryContent.String()))
 		content.WriteString("\n")
 	}
 
