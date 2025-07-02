@@ -118,11 +118,11 @@ func (m reportWeekModel) View() string {
 	weekStr := fmt.Sprintf("%s - %s", 
 		weekStart.Format("Jan 2"), 
 		weekEnd.Format("Jan 2, 2006"))
-	content.WriteString(titleStyle.Render(fmt.Sprintf("Weekly Report - %s", weekStr)))
+	content.WriteString(titleStyle.Render(fmt.Sprintf("📅 Weekly Report - %s", weekStr)))
 	content.WriteString("\n\n")
 
 	// Daily Entries Section
-	content.WriteString(sectionStyle.Render("📅 Daily Entries"))
+	content.WriteString(sectionStyle.Render("📋 Daily Entries"))
 	content.WriteString("\n")
 
 	// Format each entry with proper structure
