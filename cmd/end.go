@@ -2,8 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/deadpyxel/workday/internal/journal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -20,6 +23,125 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	RunE: markDayAsFinished,
+}
+
+type endModel struct {
+	entry         *journal.JournalEntry
+	date          time.Time
+	totalWorkTime time.Duration
+	validationErr error
+	width         int
+	height        int
+	quitting      bool
+}
+
+func (m endModel) Init() tea.Cmd {
+	return nil
+}
+
+func (m endModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q", "esc", "ctrl+c":
+			m.quitting = true
+			return m, tea.Quit
+		}
+	}
+
+	return m, nil
+}
+
+func (m endModel) View() string {
+	if m.quitting {
+		return ""
+	}
+
+	// Define styles consistent with report commands
+	titleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("86")).
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderBottom(true).
+		BorderForeground(lipgloss.Color("86")).
+		MarginBottom(1).
+		PaddingBottom(1)
+
+	sectionStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("39")).
+		MarginTop(1).
+		MarginBottom(1)
+
+	labelStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("212")).
+		Width(12)
+
+	valueStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("252"))
+
+	successStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("120"))
+
+	errorStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("196"))
+
+	helpStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("241")).
+		MarginTop(2)
+
+	var content strings.Builder
+
+	// Title
+	dateStr := m.date.Format("Monday, January 2, 2006")
+	if m.validationErr != nil {
+		content.WriteString(titleStyle.Render(fmt.Sprintf("⚠️  Workday Completed - %s", dateStr)))
+	} else {
+		content.WriteString(titleStyle.Render(fmt.Sprintf("✅ Workday Completed - %s", dateStr)))
+	}
+	content.WriteString("\n\n")
+
+	// Work Summary Section
+	content.WriteString(sectionStyle.Render("📊 Work Summary"))
+	content.WriteString("\n")
+
+	startTime := m.entry.StartTime.Format("15:04")
+	content.WriteString(labelStyle.Render("Started:") + " " + valueStyle.Render(startTime))
+	content.WriteString("\n")
+
+	endTime := m.entry.EndTime.Format("15:04")
+	content.WriteString(labelStyle.Render("Ended:") + " " + valueStyle.Render(endTime))
+	content.WriteString("\n")
+
+	hours := int(m.totalWorkTime.Hours())
+	minutes := int(m.totalWorkTime.Minutes()) % 60
+	durationStr := fmt.Sprintf("%dh %dm", hours, minutes)
+	content.WriteString(labelStyle.Render("Duration:") + " " + valueStyle.Render(durationStr))
+	content.WriteString("\n")
+
+	// Validation Status
+	content.WriteString("\n")
+	content.WriteString(sectionStyle.Render("🔍 Validation"))
+	content.WriteString("\n")
+
+	if m.validationErr != nil {
+		content.WriteString(errorStyle.Render(fmt.Sprintf("⚠️  %s", m.validationErr.Error())))
+	} else {
+		content.WriteString(successStyle.Render("✅ All validations passed"))
+	}
+	content.WriteString("\n")
+
+	// Help
+	content.WriteString(helpStyle.Render("Press 'q' or 'esc' to quit"))
+
+	return content.String()
 }
 
 // markDayAsFinished marks the current day's JournalEntry as finished.
@@ -64,18 +186,32 @@ func markDayAsFinished(cmd *cobra.Command, args []string) error {
 		entries[idx].EndDay()
 	}
 
-	err = validateEntry(entry)
-	if err != nil {
-		fmt.Printf("\nFound issues with entry: %v", err)
-		validationNote := journal.Note{Contents: fmt.Sprintf("Validation Error: %s", err)}
+	validationErr := validateEntry(entry)
+	if validationErr != nil {
+		validationNote := journal.Note{Contents: fmt.Sprintf("Validation Error: %s", validationErr)}
 		entry.AddNote(validationNote)
+		entries[idx] = *entry
 	}
 
 	err = journal.SaveEntries(entries, journalPath)
 	if err != nil {
 		return fmt.Errorf("Failed to save journal entries: %v\n", err)
 	}
-	return nil
+
+	// Calculate total work time for display
+	totalWorkTime := entry.TotalWorkTime()
+
+	// Create and run the Bubble Tea program for styled summary
+	model := endModel{
+		entry:         entry,
+		date:          now,
+		totalWorkTime: totalWorkTime,
+		validationErr: validationErr,
+	}
+
+	p := tea.NewProgram(&model)
+	_, err = p.Run()
+	return err
 }
 
 func init() {
