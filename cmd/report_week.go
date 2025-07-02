@@ -6,6 +6,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/deadpyxel/workday/internal/journal"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -56,12 +57,45 @@ func (m reportWeekModel) View() string {
 		return ""
 	}
 
+	// Define styles consistent with other report commands
+	titleStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("86")).
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderBottom(true).
+		BorderForeground(lipgloss.Color("86")).
+		MarginBottom(1).
+		PaddingBottom(1)
+
+	entryStyle := lipgloss.NewStyle().
+		BorderStyle(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		Padding(1).
+		MarginBottom(1)
+
+	helpStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("241")).
+		MarginTop(2)
+
 	var content strings.Builder
 
-	// Preserve original output format
+	// Title
+	weekStart := m.week.AddDate(0, 0, -int(m.week.Weekday()))
+	weekEnd := weekStart.AddDate(0, 0, 6)
+	weekStr := fmt.Sprintf("%s - %s", 
+		weekStart.Format("Jan 2"), 
+		weekEnd.Format("Jan 2, 2006"))
+	content.WriteString(titleStyle.Render(fmt.Sprintf("Weekly Report - %s", weekStr)))
+	content.WriteString("\n\n")
+
+	// Entries with basic styling
 	for _, entry := range m.entries {
-		content.WriteString(fmt.Sprintf("%s\n---\n", entry.String()))
+		content.WriteString(entryStyle.Render(entry.String()))
+		content.WriteString("\n")
 	}
+
+	// Help
+	content.WriteString(helpStyle.Render("Press 'q' or 'esc' to quit"))
 
 	return content.String()
 }
