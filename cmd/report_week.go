@@ -24,11 +24,12 @@ Otherwise, it prints out the entries.`,
 }
 
 type reportWeekModel struct {
-	entries  []journal.JournalEntry
-	week     time.Time
-	width    int
-	height   int
-	quitting bool
+	entries       []journal.JournalEntry
+	week          time.Time
+	totalWorkTime time.Duration
+	width         int
+	height        int
+	quitting      bool
 }
 
 func (m reportWeekModel) Init() tea.Cmd {
@@ -95,6 +96,15 @@ func (m reportWeekModel) View() string {
 	breakStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("214")).
 		PaddingLeft(2)
+
+	summaryStyle := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("120")).
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderTop(true).
+		BorderForeground(lipgloss.Color("120")).
+		PaddingTop(1).
+		MarginTop(2)
 
 	helpStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("241")).
@@ -196,6 +206,12 @@ func (m reportWeekModel) View() string {
 		content.WriteString("\n")
 	}
 
+	// Summary Section
+	content.WriteString(summaryStyle.Render(fmt.Sprintf("📊 Summary: %d entries • Total work time: %v",
+		len(m.entries),
+		m.totalWorkTime)))
+	content.WriteString("\n")
+
 	// Help
 	content.WriteString(helpStyle.Render("Press 'q' or 'esc' to quit"))
 
@@ -218,9 +234,38 @@ func reportWeek(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	lunchTime, err := time.ParseDuration(viper.GetString("lunchTime"))
+	if err != nil {
+		return err
+	}
+
+	var totalWorkTime time.Duration
+	for _, entry := range currentWeek {
+		if !entry.EndTime.IsZero() {
+			dayWorkTime := entry.EndTime.Sub(entry.StartTime)
+			var totalBreakTime time.Duration
+
+			// Calculate total breaktime
+			for _, br := range entry.Breaks {
+				if !br.EndTime.IsZero() {
+					totalBreakTime += br.EndTime.Sub(br.StartTime)
+				}
+			}
+
+			// If no breaks were recorded, subtract default lunchTime
+			if len(entry.Breaks) == 0 {
+				totalBreakTime = lunchTime
+			}
+
+			dayWorkTime -= totalBreakTime
+			totalWorkTime += dayWorkTime
+		}
+	}
+
 	model := reportWeekModel{
-		entries: currentWeek,
-		week:    now,
+		entries:       currentWeek,
+		week:          now,
+		totalWorkTime: totalWorkTime,
 	}
 
 	p := tea.NewProgram(&model)
