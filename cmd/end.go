@@ -179,18 +179,16 @@ func markDayAsFinished(cmd *cobra.Command, args []string) error {
 			fmt.Println("No changes made...")
 			return nil
 		}
-		entry.EndDay()
-		entries[idx] = *entry
+		entries[idx].EndDay()
 		fmt.Printf("Data for %s overwrote. Saving...", dateStr)
 	} else {
 		entries[idx].EndDay()
 	}
 
-	validationErr := validateEntry(entry)
+	validationErr := validateEntry(&entries[idx])
 	if validationErr != nil {
 		validationNote := journal.Note{Contents: fmt.Sprintf("Validation Error: %s", validationErr)}
-		entry.AddNote(validationNote)
-		entries[idx] = *entry
+		entries[idx].AddNote(validationNote)
 	}
 
 	err = journal.SaveEntries(entries, journalPath)
@@ -199,11 +197,11 @@ func markDayAsFinished(cmd *cobra.Command, args []string) error {
 	}
 
 	// Calculate total work time for display
-	totalWorkTime := entry.TotalWorkTime()
+	totalWorkTime := entries[idx].TotalWorkTime()
 
 	// Create and run the Bubble Tea program for styled summary
 	model := endModel{
-		entry:         entry,
+		entry:         &entries[idx],
 		date:          now,
 		totalWorkTime: totalWorkTime,
 		validationErr: validationErr,
