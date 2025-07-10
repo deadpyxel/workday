@@ -6,8 +6,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/deadpyxel/workday/internal/journal"
+	"github.com/deadpyxel/workday/internal/styles"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -59,91 +59,57 @@ func (m startModel) View() string {
 		return ""
 	}
 
-	// Define styles consistent with other commands
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("86")).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderBottom(true).
-		BorderForeground(lipgloss.Color("86")).
-		MarginBottom(1).
-		PaddingBottom(1)
-
-	sectionStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("39")).
-		MarginTop(1).
-		MarginBottom(1)
-
-	labelStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("212")).
-		Width(12)
-
-	valueStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252"))
-
-	successStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("120"))
-
-	infoStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("39"))
-
-	helpStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241")).
-		MarginTop(2)
 
 	var content strings.Builder
 
 	// Title
 	dateStr := m.startTime.Format("Monday, January 2, 2006")
 	if m.isNewEntry {
-		content.WriteString(titleStyle.Render(fmt.Sprintf("🚀 Workday Started - %s", dateStr)))
+		content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("🚀 Workday Started - %s", dateStr)))
 	} else {
-		content.WriteString(titleStyle.Render(fmt.Sprintf("🔄 Workday Restarted - %s", dateStr)))
+		content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("🔄 Workday Restarted - %s", dateStr)))
 	}
 	content.WriteString("\n\n")
 
 	// Start Details Section
-	content.WriteString(sectionStyle.Render("⏰ Start Details"))
+	content.WriteString(styles.SectionStyle.Render("⏰ Start Details"))
 	content.WriteString("\n")
 
 	startTime := m.startTime.Format("15:04")
-	content.WriteString(labelStyle.Render("Time:") + " " + valueStyle.Render(startTime))
+	content.WriteString(styles.LabelStyle.Render("Time:") + " " + styles.ValueStyle.Render(startTime))
 	content.WriteString("\n")
 
 	if m.isNewEntry {
-		content.WriteString(labelStyle.Render("Status:") + " " + successStyle.Render("New workday entry created"))
+		content.WriteString(styles.LabelStyle.Render("Status:") + " " + styles.SuccessStyle.Render("New workday entry created"))
 	} else {
-		content.WriteString(labelStyle.Render("Status:") + " " + infoStyle.Render("Existing entry overwritten"))
+		content.WriteString(styles.LabelStyle.Render("Status:") + " " + styles.InfoBlueStyle.Render("Existing entry overwritten"))
 	}
 	content.WriteString("\n")
 
 	// Previous Entry Info (if applicable)
 	if m.previousEndTime != nil {
 		content.WriteString("\n")
-		content.WriteString(sectionStyle.Render("📝 Previous Entry"))
+		content.WriteString(styles.SectionStyle.Render("📝 Previous Entry"))
 		content.WriteString("\n")
 		
 		prevEndTime := m.previousEndTime.Format("15:04 on Jan 2")
-		content.WriteString(labelStyle.Render("End Time:") + " " + valueStyle.Render(fmt.Sprintf("Updated to %s", prevEndTime)))
+		content.WriteString(styles.LabelStyle.Render("End Time:") + " " + styles.ValueStyle.Render(fmt.Sprintf("Updated to %s", prevEndTime)))
 		content.WriteString("\n")
 	}
 
 	// Next Steps
 	content.WriteString("\n")
-	content.WriteString(sectionStyle.Render("📋 Next Steps"))
+	content.WriteString(styles.SectionStyle.Render("📋 Next Steps"))
 	content.WriteString("\n")
-	content.WriteString(infoStyle.Render("• Add notes with: workday note \"Your note here\""))
+	content.WriteString(styles.InfoBlueStyle.Render("• Add notes with: workday note \"Your note here\""))
 	content.WriteString("\n")
-	content.WriteString(infoStyle.Render("• Take breaks with: workday break start \"lunch\""))
+	content.WriteString(styles.InfoBlueStyle.Render("• Take breaks with: workday break start \"lunch\""))
 	content.WriteString("\n")
-	content.WriteString(infoStyle.Render("• End your day with: workday end"))
+	content.WriteString(styles.InfoBlueStyle.Render("• End your day with: workday end"))
 	content.WriteString("\n")
 
 	// Help
-	content.WriteString(helpStyle.Render("Press 'q' or 'esc' to quit"))
+	content.WriteString(styles.HelpStyle.Render("Press 'q' or 'esc' to quit"))
 
 	return content.String()
 }
