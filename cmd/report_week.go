@@ -58,7 +58,7 @@ func (m reportWeekModel) View() string {
 		return ""
 	}
 
-	// Define styles consistent with other report commands
+	// Define styles
 	titleStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("86")).
@@ -68,34 +68,14 @@ func (m reportWeekModel) View() string {
 		MarginBottom(1).
 		PaddingBottom(1)
 
-	sectionStyle := lipgloss.NewStyle().
+	headerStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("39")).
-		MarginTop(1).
-		MarginBottom(1)
+		Align(lipgloss.Center)
 
-	entryStyle := lipgloss.NewStyle().
-		BorderStyle(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		Padding(1).
-		MarginBottom(1)
-
-	labelStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("212")).
-		Width(12)
-
-	valueStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252"))
-
-	noteStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("159")).
-		PaddingLeft(2).
-		MarginBottom(1)
-
-	breakStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("214")).
-		PaddingLeft(2)
+	cellStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("252")).
+		Align(lipgloss.Center)
 
 	summaryStyle := lipgloss.NewStyle().
 		Bold(true).
@@ -121,95 +101,164 @@ func (m reportWeekModel) View() string {
 	content.WriteString(titleStyle.Render(fmt.Sprintf("📅 Weekly Report - %s", weekStr)))
 	content.WriteString("\n\n")
 
-	// Daily Entries Section
-	content.WriteString(sectionStyle.Render("📋 Daily Entries"))
-	content.WriteString("\n")
+	// Create table data
+	headers := []string{"Date", "Start", "End", "Duration", "Breaks"}
+	rows := [][]string{}
 
-	// Format each entry with proper structure
-	for _, entry := range m.entries {
-		var entryContent strings.Builder
-
-		// Date header
-		date := entry.StartTime.Format("Mon, Jan 2")
-		entryContent.WriteString(labelStyle.Render("Date:") + " " + valueStyle.Render(date))
-		entryContent.WriteString("\n")
-
-		// Work hours
-		startTime := entry.StartTime.Format("15:04")
-		entryContent.WriteString(labelStyle.Render("Start:") + " " + valueStyle.Render(startTime))
-		entryContent.WriteString("\n")
-
-		endTime := "Ongoing"
-		if !entry.EndTime.IsZero() {
-			endTime = entry.EndTime.Format("15:04")
-		}
-		entryContent.WriteString(labelStyle.Render("End:") + " " + valueStyle.Render(endTime))
-		entryContent.WriteString("\n")
-
-		// Duration calculation
-		if !entry.EndTime.IsZero() {
-			duration := entry.EndTime.Sub(entry.StartTime)
-
-			// Subtract break time
-			for _, br := range entry.Breaks {
-				if !br.EndTime.IsZero() {
-					duration -= br.EndTime.Sub(br.StartTime)
-				}
+	// Generate all days of the week
+	for i := 0; i < 7; i++ {
+		currentDay := weekStart.AddDate(0, 0, i)
+		
+		// Find entry for this day
+		var entry *journal.JournalEntry
+		for _, e := range m.entries {
+			if e.StartTime.Format("2006-01-02") == currentDay.Format("2006-01-02") {
+				entry = &e
+				break
 			}
+		}
 
-			hours := int(duration.Hours())
-			minutes := int(duration.Minutes()) % 60
-			entryContent.WriteString(labelStyle.Render("Duration:") + " " + valueStyle.Render(fmt.Sprintf("%dh %dm", hours, minutes)))
+		if entry == nil {
+			// No entry for this day
+			rows = append(rows, []string{
+				currentDay.Format("Mon, Jan 2"),
+				"--",
+				"--",
+				"--",
+				"--",
+			})
 		} else {
-			entryContent.WriteString(labelStyle.Render("Duration:") + " " + valueStyle.Render("In progress"))
-		}
-		entryContent.WriteString("\n")
-
-		// Breaks (if any)
-		if len(entry.Breaks) > 0 {
-			entryContent.WriteString("\n")
-			entryContent.WriteString(labelStyle.Render("Breaks:"))
-			entryContent.WriteString("\n")
-			for i, br := range entry.Breaks {
-				startTime := br.StartTime.Format("15:04")
-				endTime := "Ongoing"
-				if !br.EndTime.IsZero() {
-					endTime = br.EndTime.Format("15:04")
+			// Format entry data
+			date := entry.StartTime.Format("Mon, Jan 2")
+			startTime := entry.StartTime.Format("15:04")
+			
+			endTime := "Ongoing"
+			duration := "In progress"
+			if !entry.EndTime.IsZero() {
+				endTime = entry.EndTime.Format("15:04")
+				
+				// Calculate work duration
+				workDuration := entry.EndTime.Sub(entry.StartTime)
+				
+				// Subtract break time
+				var totalBreakTime time.Duration
+				for _, br := range entry.Breaks {
+					if !br.EndTime.IsZero() {
+						totalBreakTime += br.EndTime.Sub(br.StartTime)
+					}
 				}
-
-				breakText := fmt.Sprintf("%d. %s - %s", i+1, startTime, endTime)
-				if br.Reason != "" {
-					breakText += fmt.Sprintf(" (%s)", br.Reason)
-				}
-
-				entryContent.WriteString(breakStyle.Render(breakText))
-				entryContent.WriteString("\n")
+				
+				workDuration -= totalBreakTime
+				hours := int(workDuration.Hours())
+				minutes := int(workDuration.Minutes()) % 60
+				duration = fmt.Sprintf("%dh %dm", hours, minutes)
 			}
-		}
-
-		// Notes (if any)
-		if len(entry.Notes) > 0 {
-			entryContent.WriteString("\n")
-			entryContent.WriteString(labelStyle.Render("Notes:"))
-			entryContent.WriteString("\n")
-			for i, note := range entry.Notes {
-				noteText := fmt.Sprintf("%d. %s", i+1, note.Contents)
-				if len(note.Tags) > 0 {
-					noteText += fmt.Sprintf(" [%s]", strings.Join(note.Tags, ", "))
+			
+			// Format breaks
+			breakInfo := "--"
+			if len(entry.Breaks) > 0 {
+				var breakTimes []string
+				for _, br := range entry.Breaks {
+					if !br.EndTime.IsZero() {
+						breakTime := fmt.Sprintf("%s-%s", br.StartTime.Format("15:04"), br.EndTime.Format("15:04"))
+						breakTimes = append(breakTimes, breakTime)
+					} else {
+						breakTime := fmt.Sprintf("%s-ongoing", br.StartTime.Format("15:04"))
+						breakTimes = append(breakTimes, breakTime)
+					}
 				}
-				entryContent.WriteString(noteStyle.Render(noteText))
-				entryContent.WriteString("\n")
+				if len(breakTimes) > 0 {
+					breakInfo = strings.Join(breakTimes, ", ")
+				}
 			}
+			
+			rows = append(rows, []string{date, startTime, endTime, duration, breakInfo})
 		}
-
-		content.WriteString(entryStyle.Render(entryContent.String()))
-		content.WriteString("\n")
 	}
 
+	// Calculate column widths
+	colWidths := make([]int, len(headers))
+	for i, header := range headers {
+		colWidths[i] = len(header)
+	}
+	for _, row := range rows {
+		for i, cell := range row {
+			if len(cell) > colWidths[i] {
+				colWidths[i] = len(cell)
+			}
+		}
+	}
+
+	// Add padding to column widths
+	for i := range colWidths {
+		colWidths[i] += 2
+	}
+
+	// Create table
+	var table strings.Builder
+	
+	// Top border
+	table.WriteString("┌")
+	for i, width := range colWidths {
+		table.WriteString(strings.Repeat("─", width))
+		if i < len(colWidths)-1 {
+			table.WriteString("┬")
+		}
+	}
+	table.WriteString("┐\n")
+
+	// Header row
+	table.WriteString("│")
+	for i, header := range headers {
+		cell := headerStyle.Width(colWidths[i]).Render(header)
+		table.WriteString(cell)
+		table.WriteString("│")
+	}
+	table.WriteString("\n")
+
+	// Header separator
+	table.WriteString("├")
+	for i, width := range colWidths {
+		table.WriteString(strings.Repeat("─", width))
+		if i < len(colWidths)-1 {
+			table.WriteString("┼")
+		}
+	}
+	table.WriteString("┤\n")
+
+	// Data rows
+	for _, row := range rows {
+		table.WriteString("│")
+		for i, cell := range row {
+			styledCell := cellStyle.Width(colWidths[i]).Render(cell)
+			table.WriteString(styledCell)
+			table.WriteString("│")
+		}
+		table.WriteString("\n")
+	}
+
+	// Bottom border
+	table.WriteString("└")
+	for i, width := range colWidths {
+		table.WriteString(strings.Repeat("─", width))
+		if i < len(colWidths)-1 {
+			table.WriteString("┴")
+		}
+	}
+	table.WriteString("┘\n")
+
+	content.WriteString(table.String())
+
 	// Summary Section
-	content.WriteString(summaryStyle.Render(fmt.Sprintf("📊 Summary: %d entries • Total work time: %v",
-		len(m.entries),
-		m.totalWorkTime)))
+	workDays := 0
+	for _, entry := range m.entries {
+		if !entry.EndTime.IsZero() {
+			workDays++
+		}
+	}
+	
+	content.WriteString(summaryStyle.Render(fmt.Sprintf("📊 Total work time: %v across %d days",
+		m.totalWorkTime, workDays)))
 	content.WriteString("\n")
 
 	// Help
