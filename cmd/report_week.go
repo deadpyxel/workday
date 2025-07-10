@@ -6,8 +6,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/deadpyxel/workday/internal/journal"
+	"github.com/deadpyxel/workday/internal/styles"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -58,37 +58,6 @@ func (m reportWeekModel) View() string {
 		return ""
 	}
 
-	// Define styles
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("86")).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderBottom(true).
-		BorderForeground(lipgloss.Color("86")).
-		MarginBottom(1).
-		PaddingBottom(1)
-
-	headerStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("39")).
-		Align(lipgloss.Center)
-
-	cellStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252")).
-		Align(lipgloss.Center)
-
-	summaryStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("120")).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderTop(true).
-		BorderForeground(lipgloss.Color("120")).
-		PaddingTop(1).
-		MarginTop(2)
-
-	helpStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241")).
-		MarginTop(2)
 
 	var content strings.Builder
 
@@ -98,7 +67,7 @@ func (m reportWeekModel) View() string {
 	weekStr := fmt.Sprintf("%s - %s", 
 		weekStart.Format("Jan 2"), 
 		weekEnd.Format("Jan 2, 2006"))
-	content.WriteString(titleStyle.Render(fmt.Sprintf("📅 Weekly Report - %s", weekStr)))
+	content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("📅 Weekly Report - %s", weekStr)))
 	content.WriteString("\n\n")
 
 	// Create table data
@@ -210,7 +179,7 @@ func (m reportWeekModel) View() string {
 	// Header row
 	table.WriteString("│")
 	for i, header := range headers {
-		cell := headerStyle.Width(colWidths[i]).Render(header)
+		cell := styles.HeaderStyle.Width(colWidths[i]).Render(header)
 		table.WriteString(cell)
 		table.WriteString("│")
 	}
@@ -230,7 +199,7 @@ func (m reportWeekModel) View() string {
 	for _, row := range rows {
 		table.WriteString("│")
 		for i, cell := range row {
-			styledCell := cellStyle.Width(colWidths[i]).Render(cell)
+			styledCell := styles.CellStyle.Width(colWidths[i]).Render(cell)
 			table.WriteString(styledCell)
 			table.WriteString("│")
 		}
@@ -257,12 +226,12 @@ func (m reportWeekModel) View() string {
 		}
 	}
 	
-	content.WriteString(summaryStyle.Render(fmt.Sprintf("📊 Total work time: %v across %d days",
+	content.WriteString(styles.SummaryStyle.Render(fmt.Sprintf("📊 Total work time: %v across %d days",
 		m.totalWorkTime, workDays)))
 	content.WriteString("\n")
 
 	// Help
-	content.WriteString(helpStyle.Render("Press 'q' or 'esc' to quit"))
+	content.WriteString(styles.HelpStyle.Render("Press 'q' or 'esc' to quit"))
 
 	return content.String()
 }

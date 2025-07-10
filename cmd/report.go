@@ -6,8 +6,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/deadpyxel/workday/internal/journal"
+	"github.com/deadpyxel/workday/internal/styles"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -60,63 +60,27 @@ func (m reportModel) View() string {
 		return ""
 	}
 
-	// Define styles
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("86")).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderBottom(true).
-		BorderForeground(lipgloss.Color("86")).
-		MarginBottom(1).
-		PaddingBottom(1)
-
-	sectionStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("39")).
-		MarginTop(1).
-		MarginBottom(1)
-
-	labelStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("212")).
-		Width(12)
-
-	valueStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252"))
-
-	breakStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("214")).
-		PaddingLeft(2)
-
-	noteStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("159")).
-		PaddingLeft(2).
-		MarginBottom(1)
-
-	helpStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241")).
-		MarginTop(2)
 
 	var content strings.Builder
 
 	// Title
 	dateStr := m.date.Format("Monday, January 2, 2006")
-	content.WriteString(titleStyle.Render(fmt.Sprintf("Workday Report - %s", dateStr)))
+	content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("Workday Report - %s", dateStr)))
 	content.WriteString("\n\n")
 
 	// Work Hours Section
-	content.WriteString(sectionStyle.Render("⏰ Work Hours"))
+	content.WriteString(styles.SectionStyle.Render("⏰ Work Hours"))
 	content.WriteString("\n")
 
 	startTime := m.entry.StartTime.Format("15:04")
-	content.WriteString(labelStyle.Render("Start:") + " " + valueStyle.Render(startTime))
+	content.WriteString(styles.LabelStyle.Render("Start:") + " " + styles.ValueStyle.Render(startTime))
 	content.WriteString("\n")
 
 	endTime := "Ongoing"
 	if !m.entry.EndTime.IsZero() {
 		endTime = m.entry.EndTime.Format("15:04")
 	}
-	content.WriteString(labelStyle.Render("End:") + " " + valueStyle.Render(endTime))
+	content.WriteString(styles.LabelStyle.Render("End:") + " " + styles.ValueStyle.Render(endTime))
 	content.WriteString("\n")
 
 	// Calculate work duration
@@ -133,16 +97,16 @@ func (m reportModel) View() string {
 
 		hours := int(duration.Hours())
 		minutes := int(duration.Minutes()) % 60
-		content.WriteString(labelStyle.Render("Duration:") + " " + valueStyle.Render(fmt.Sprintf("%dh %dm", hours, minutes)))
+		content.WriteString(styles.LabelStyle.Render("Duration:") + " " + styles.ValueStyle.Render(fmt.Sprintf("%dh %dm", hours, minutes)))
 	} else {
-		content.WriteString(labelStyle.Render("Duration:") + " " + valueStyle.Render("In progress"))
+		content.WriteString(styles.LabelStyle.Render("Duration:") + " " + styles.ValueStyle.Render("In progress"))
 	}
 	content.WriteString("\n")
 
 	// Breaks Section
 	if len(m.entry.Breaks) > 0 {
 		content.WriteString("\n")
-		content.WriteString(sectionStyle.Render("☕ Breaks"))
+		content.WriteString(styles.SectionStyle.Render("☕ Breaks"))
 		content.WriteString("\n")
 
 		for i, br := range m.entry.Breaks {
@@ -157,7 +121,7 @@ func (m reportModel) View() string {
 				breakText += fmt.Sprintf(" (%s)", br.Reason)
 			}
 
-			content.WriteString(breakStyle.Render(breakText))
+			content.WriteString(styles.BreakStyle.Render(breakText))
 			content.WriteString("\n")
 		}
 	}
@@ -165,7 +129,7 @@ func (m reportModel) View() string {
 	// Notes Section
 	if len(m.entry.Notes) > 0 {
 		content.WriteString("\n")
-		content.WriteString(sectionStyle.Render("📝 Notes"))
+		content.WriteString(styles.SectionStyle.Render("📝 Notes"))
 		content.WriteString("\n")
 
 		for i, note := range m.entry.Notes {
@@ -173,14 +137,14 @@ func (m reportModel) View() string {
 			if len(note.Tags) > 0 {
 				noteText += fmt.Sprintf(" [%s]", strings.Join(note.Tags, ", "))
 			}
-			content.WriteString(noteStyle.Render(noteText))
+			content.WriteString(styles.NoteStyle.Render(noteText))
 			content.WriteString("\n")
 		}
 	}
 
 	// Help
 	content.WriteString("\n")
-	content.WriteString(helpStyle.Render("Press 'q' or 'esc' to quit"))
+	content.WriteString(styles.HelpStyle.Render("Press 'q' or 'esc' to quit"))
 
 	return content.String()
 }

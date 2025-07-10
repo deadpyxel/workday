@@ -6,8 +6,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/deadpyxel/workday/internal/journal"
+	"github.com/deadpyxel/workday/internal/styles"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -61,85 +61,50 @@ func (m endModel) View() string {
 		return ""
 	}
 
-	// Define styles consistent with report commands
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("86")).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderBottom(true).
-		BorderForeground(lipgloss.Color("86")).
-		MarginBottom(1).
-		PaddingBottom(1)
-
-	sectionStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("39")).
-		MarginTop(1).
-		MarginBottom(1)
-
-	labelStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("212")).
-		Width(12)
-
-	valueStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252"))
-
-	successStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("120"))
-
-	errorStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("196"))
-
-	helpStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241")).
-		MarginTop(2)
 
 	var content strings.Builder
 
 	// Title
 	dateStr := m.date.Format("Monday, January 2, 2006")
 	if m.validationErr != nil {
-		content.WriteString(titleStyle.Render(fmt.Sprintf("⚠️  Workday Completed - %s", dateStr)))
+		content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("⚠️  Workday Completed - %s", dateStr)))
 	} else {
-		content.WriteString(titleStyle.Render(fmt.Sprintf("✅ Workday Completed - %s", dateStr)))
+		content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("✅ Workday Completed - %s", dateStr)))
 	}
 	content.WriteString("\n\n")
 
 	// Work Summary Section
-	content.WriteString(sectionStyle.Render("📊 Work Summary"))
+	content.WriteString(styles.SectionStyle.Render("📊 Work Summary"))
 	content.WriteString("\n")
 
 	startTime := m.entry.StartTime.Format("15:04")
-	content.WriteString(labelStyle.Render("Started:") + " " + valueStyle.Render(startTime))
+	content.WriteString(styles.LabelStyle.Render("Started:") + " " + styles.ValueStyle.Render(startTime))
 	content.WriteString("\n")
 
 	endTime := m.entry.EndTime.Format("15:04")
-	content.WriteString(labelStyle.Render("Ended:") + " " + valueStyle.Render(endTime))
+	content.WriteString(styles.LabelStyle.Render("Ended:") + " " + styles.ValueStyle.Render(endTime))
 	content.WriteString("\n")
 
 	hours := int(m.totalWorkTime.Hours())
 	minutes := int(m.totalWorkTime.Minutes()) % 60
 	durationStr := fmt.Sprintf("%dh %dm", hours, minutes)
-	content.WriteString(labelStyle.Render("Duration:") + " " + valueStyle.Render(durationStr))
+	content.WriteString(styles.LabelStyle.Render("Duration:") + " " + styles.ValueStyle.Render(durationStr))
 	content.WriteString("\n")
 
 	// Validation Status
 	content.WriteString("\n")
-	content.WriteString(sectionStyle.Render("🔍 Validation"))
+	content.WriteString(styles.SectionStyle.Render("🔍 Validation"))
 	content.WriteString("\n")
 
 	if m.validationErr != nil {
-		content.WriteString(errorStyle.Render(fmt.Sprintf("⚠️  %s", m.validationErr.Error())))
+		content.WriteString(styles.ErrorStyle.Render(fmt.Sprintf("⚠️  %s", m.validationErr.Error())))
 	} else {
-		content.WriteString(successStyle.Render("✅ All validations passed"))
+		content.WriteString(styles.SuccessStyle.Render("✅ All validations passed"))
 	}
 	content.WriteString("\n")
 
 	// Help
-	content.WriteString(helpStyle.Render("Press 'q' or 'esc' to quit"))
+	content.WriteString(styles.HelpStyle.Render("Press 'q' or 'esc' to quit"))
 
 	return content.String()
 }

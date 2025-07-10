@@ -6,8 +6,8 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/deadpyxel/workday/internal/journal"
+	"github.com/deadpyxel/workday/internal/styles"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -127,65 +127,31 @@ func (m breakModel) View() string {
 		return ""
 	}
 
-	// Define styles consistent with other commands
-	titleStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("86")).
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderBottom(true).
-		BorderForeground(lipgloss.Color("86")).
-		MarginBottom(1).
-		PaddingBottom(1)
-
-	sectionStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("39")).
-		MarginTop(1).
-		MarginBottom(1)
-
-	labelStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("212")).
-		Width(12)
-
-	valueStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("252"))
-
-	successStyle := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("120"))
-
-	infoStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("214"))
-
-	helpStyle := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241")).
-		MarginTop(2)
 
 	var content strings.Builder
 
 	// Title based on action
 	if m.isStarting {
-		content.WriteString(titleStyle.Render("☕ Break Started"))
+		content.WriteString(styles.TitleStyle.Render("☕ Break Started"))
 	} else {
-		content.WriteString(titleStyle.Render("✅ Break Ended"))
+		content.WriteString(styles.TitleStyle.Render("✅ Break Ended"))
 	}
 	content.WriteString("\n\n")
 
 	// Break Details Section
-	content.WriteString(sectionStyle.Render("🕐 Break Details"))
+	content.WriteString(styles.SectionStyle.Render("🕐 Break Details"))
 	content.WriteString("\n")
 
 	breakTime := m.breakTime.Format("15:04")
 	if m.isStarting {
-		content.WriteString(labelStyle.Render("Started:") + " " + valueStyle.Render(breakTime))
+		content.WriteString(styles.LabelStyle.Render("Started:") + " " + styles.ValueStyle.Render(breakTime))
 	} else {
-		content.WriteString(labelStyle.Render("Ended:") + " " + valueStyle.Render(breakTime))
+		content.WriteString(styles.LabelStyle.Render("Ended:") + " " + styles.ValueStyle.Render(breakTime))
 	}
 	content.WriteString("\n")
 
 	if m.reason != "" {
-		content.WriteString(labelStyle.Render("Reason:") + " " + valueStyle.Render(m.reason))
+		content.WriteString(styles.LabelStyle.Render("Reason:") + " " + styles.ValueStyle.Render(m.reason))
 		content.WriteString("\n")
 	}
 
@@ -196,16 +162,16 @@ func (m breakModel) View() string {
 		if hours == 0 {
 			durationStr = fmt.Sprintf("%dm", minutes)
 		}
-		content.WriteString(labelStyle.Render("Duration:") + " " + successStyle.Render(durationStr))
+		content.WriteString(styles.LabelStyle.Render("Duration:") + " " + styles.SuccessStyle.Render(durationStr))
 		content.WriteString("\n")
 	}
 
 	// Daily Summary Section
 	content.WriteString("\n")
-	content.WriteString(sectionStyle.Render("📊 Today's Summary"))
+	content.WriteString(styles.SectionStyle.Render("📊 Today's Summary"))
 	content.WriteString("\n")
 
-	content.WriteString(labelStyle.Render("Breaks:") + " " + valueStyle.Render(fmt.Sprintf("%d taken", m.totalDayBreaks)))
+	content.WriteString(styles.LabelStyle.Render("Breaks:") + " " + styles.ValueStyle.Render(fmt.Sprintf("%d taken", m.totalDayBreaks)))
 	content.WriteString("\n")
 
 	if m.totalBreakTime > 0 {
@@ -215,21 +181,21 @@ func (m breakModel) View() string {
 		if totalHours == 0 {
 			totalTimeStr = fmt.Sprintf("%dm", totalMinutes)
 		}
-		content.WriteString(labelStyle.Render("Total Time:") + " " + valueStyle.Render(totalTimeStr))
+		content.WriteString(styles.LabelStyle.Render("Total Time:") + " " + styles.ValueStyle.Render(totalTimeStr))
 		content.WriteString("\n")
 	}
 
 	// Action guidance
 	content.WriteString("\n")
 	if m.isStarting {
-		content.WriteString(infoStyle.Render("💡 Stop your break with: workday break stop"))
+		content.WriteString(styles.InfoStyle.Render("💡 Stop your break with: workday break stop"))
 	} else {
-		content.WriteString(successStyle.Render("🎯 Ready to continue working!"))
+		content.WriteString(styles.SuccessStyle.Render("🎯 Ready to continue working!"))
 	}
 	content.WriteString("\n")
 
 	// Help
-	content.WriteString(helpStyle.Render("Press 'q' or 'esc' to quit"))
+	content.WriteString(styles.HelpStyle.Render("Press 'q' or 'esc' to quit"))
 
 	return content.String()
 }
