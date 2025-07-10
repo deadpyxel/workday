@@ -155,7 +155,7 @@ func startWorkDay(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			endTime, err := time.Parse("15:04", endTimeStr)
+			endTime, err := journal.ValidateTimeFormat(endTimeStr)
 			if err != nil {
 				return err
 			}

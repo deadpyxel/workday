@@ -27,17 +27,17 @@ import (
 func SaveEntries(journalEntries []JournalEntry, filename string) error {
 	data, err := json.Marshal(Journal{Version: SchemaVersion, Entries: journalEntries})
 	if err != nil {
-		return err
+		return JournalIOError("marshal", err)
 	}
 	file, err := os.Create(filename)
 	if err != nil {
-		return err
+		return JournalIOError("create", err)
 	}
 	defer file.Close()
 
 	_, err = file.Write(data)
 	if err != nil {
-		return err
+		return JournalIOError("write", err)
 	}
 
 	return nil
@@ -58,16 +58,16 @@ func LoadEntries(filename string) ([]JournalEntry, error) {
 			emptyJournal := Journal{Version: SchemaVersion, Entries: []JournalEntry{}}
 			jsonData, err := json.Marshal(emptyJournal)
 			if err != nil {
-				return nil, err
+				return nil, JournalIOError("marshal empty journal", err)
 			}
 			err = os.WriteFile(filename, jsonData, 0644)
 			if err != nil {
-				return nil, err
+				return nil, JournalIOError("create empty journal", err)
 			}
 			return []JournalEntry{}, nil
 		}
 		// If there was another type of error, return the error
-		return nil, err
+		return nil, JournalIOError("read", err)
 	}
 
 	var journalData Journal
@@ -96,7 +96,7 @@ func LoadEntries(filename string) ([]JournalEntry, error) {
 		// Save the migrated data back to the file
 		err = SaveEntries(journalData.Entries, filename)
 		if err != nil {
-			return nil, err
+			return nil, JournalIOError("save migrated data", err)
 		}
 	}
 

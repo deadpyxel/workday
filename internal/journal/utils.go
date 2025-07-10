@@ -1,7 +1,6 @@
 package journal
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -39,7 +38,7 @@ func FetchEntryByID(id string, entries []JournalEntry) (*JournalEntry, int) {
 //	fmt.Println(currentWeekEntries) // Prints the entries for the current week
 func FetchEntriesByWeekDate(journalEntries []JournalEntry, currentDate time.Time) ([]JournalEntry, error) {
 	if len(journalEntries) == 0 {
-		return nil, fmt.Errorf("No entries were passed")
+		return nil, NoEntriesError("weekly report")
 	}
 	var currentWeekEntries []JournalEntry
 
@@ -56,7 +55,7 @@ func FetchEntriesByWeekDate(journalEntries []JournalEntry, currentDate time.Time
 		}
 	}
 	if len(currentWeekEntries) == 0 {
-		return nil, fmt.Errorf("No entries found for the current week")
+		return nil, NoEntriesError("current week")
 	}
 
 	return currentWeekEntries, nil
@@ -83,7 +82,7 @@ func FetchEntriesByWeekDate(journalEntries []JournalEntry, currentDate time.Time
 //	fmt.Println(currentMonthEntries) // Prints the entries for the current week
 func FetchEntriesByMonthDate(journalEntries []JournalEntry, filterDate time.Time) ([]JournalEntry, error) {
 	if len(journalEntries) == 0 {
-		return nil, fmt.Errorf("No entries were passed")
+		return nil, NoEntriesError("monthly report")
 	}
 	var currentMonthEntries []JournalEntry
 
@@ -100,7 +99,7 @@ func FetchEntriesByMonthDate(journalEntries []JournalEntry, filterDate time.Time
 		}
 	}
 	if len(currentMonthEntries) == 0 {
-		return nil, fmt.Errorf("No entries found for the current month")
+		return nil, NoEntriesError("current month")
 	}
 
 	return currentMonthEntries, nil
@@ -116,7 +115,7 @@ func CalculateTotalTime(entries []JournalEntry) (time.Duration, error) {
 	var d time.Duration
 	for _, entry := range entries {
 		if !entry.EndTime.After(entry.StartTime) {
-			return 0, fmt.Errorf("Invalid entry %s: end time is before start time", entry.ID)
+			return 0, InvalidEntryError(entry.ID, "end time is before start time")
 		}
 		d += entry.EndTime.Sub(entry.StartTime)
 	}

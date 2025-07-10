@@ -83,8 +83,8 @@ func TestFetchEntriesByWeek(t *testing.T) {
 		expectedErr    string
 		expectedResult []JournalEntry
 	}{
-		{name: "When passing an empty slice function returns an error", entries: []JournalEntry{}, expectedErr: "No entries were passed", expectedResult: nil},
-		{name: "When passing a slice with no date in current week returns an error", entries: entries[:1], expectedErr: "No entries found for the current week", expectedResult: nil},
+		{name: "When passing an empty slice function returns an error", entries: []JournalEntry{}, expectedErr: "no entries found: no entries found for weekly report", expectedResult: nil},
+		{name: "When passing a slice with no date in current week returns an error", entries: entries[:1], expectedErr: "no entries found: no entries found for current week", expectedResult: nil},
 		{name: "When passing a slice with entries in current week returns filtered slice with no errors", entries: entries, expectedErr: "", expectedResult: []JournalEntry{entries[1]}},
 	}
 

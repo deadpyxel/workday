@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/deadpyxel/workday/internal/journal"
 	"github.com/spf13/cobra"
@@ -41,14 +40,20 @@ func addNoteToCurrentDay(cmd *cobra.Command, args []string) error {
 		tags = []string{}
 	}
 
-	now := time.Now()
-	dayId := now.Format("20060102")
-	_, idx := journal.FetchEntryByID(dayId, entries)
-	if idx == -1 {
+	// Find current day entry using validation helper
+	_, idx, err := journal.FindCurrentDayEntry(entries)
+	if err != nil {
 		fmt.Println("Please run `workday start` first to create a new entry.")
-		return fmt.Errorf("Could not find any entry for the current day.")
+		return err
 	}
-	entries[idx].Notes = append(entries[idx].Notes, journal.Note{Contents: newNote, Tags: tags})
+
+	// Create and validate note
+	note := journal.Note{Contents: newNote, Tags: tags}
+	if result := journal.ValidateNote(note); !result.IsValid {
+		return result.Error
+	}
+
+	entries[idx].Notes = append(entries[idx].Notes, note)
 	err = journal.SaveEntries(entries, journalPath)
 	if err != nil {
 		return err

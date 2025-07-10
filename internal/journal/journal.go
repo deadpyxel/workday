@@ -88,7 +88,7 @@ func (j *JournalEntry) String() string {
 
 func (j *JournalEntry) AddNote(note Note) error {
 	if note.Contents == "" {
-		return fmt.Errorf("Cannot add empty note")
+		return EmptyNoteError()
 	}
 	if len(note.Tags) == 1 && note.Tags[0] == "" {
 		note.Tags = nil

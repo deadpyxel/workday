@@ -39,7 +39,7 @@ func startBreak(cmd *cobra.Command, args []string) error {
 	currentDayId := now.Format("20060102")
 	entry, idx := journal.FetchEntryByID(currentDayId, entries)
 	if idx == -1 {
-		return fmt.Errorf("No entry found for the current day. Start your workday first.")
+		return journal.EntryNotFoundError(currentDayId)
 	}
 
 	if len(args) > 0 {
