@@ -2,9 +2,12 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deadpyxel/workday/internal/journal"
+	"github.com/deadpyxel/workday/internal/styles"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -20,6 +23,90 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	RunE: markDayAsFinished,
+}
+
+type endModel struct {
+	entry         *journal.JournalEntry
+	date          time.Time
+	totalWorkTime time.Duration
+	validationErr error
+	width         int
+	height        int
+	quitting      bool
+}
+
+func (m endModel) Init() tea.Cmd {
+	return nil
+}
+
+func (m endModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q", "esc", "ctrl+c":
+			m.quitting = true
+			return m, tea.Quit
+		}
+	}
+
+	return m, nil
+}
+
+func (m endModel) View() string {
+	if m.quitting {
+		return ""
+	}
+
+
+	var content strings.Builder
+
+	// Title
+	dateStr := m.date.Format("Monday, January 2, 2006")
+	if m.validationErr != nil {
+		content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("⚠️  Workday Completed - %s", dateStr)))
+	} else {
+		content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("✅ Workday Completed - %s", dateStr)))
+	}
+	content.WriteString("\n\n")
+
+	// Work Summary Section
+	content.WriteString(styles.SectionStyle.Render("📊 Work Summary"))
+	content.WriteString("\n")
+
+	startTime := m.entry.StartTime.Format("15:04")
+	content.WriteString(styles.LabelStyle.Render("Started:") + " " + styles.ValueStyle.Render(startTime))
+	content.WriteString("\n")
+
+	endTime := m.entry.EndTime.Format("15:04")
+	content.WriteString(styles.LabelStyle.Render("Ended:") + " " + styles.ValueStyle.Render(endTime))
+	content.WriteString("\n")
+
+	hours := int(m.totalWorkTime.Hours())
+	minutes := int(m.totalWorkTime.Minutes()) % 60
+	durationStr := fmt.Sprintf("%dh %dm", hours, minutes)
+	content.WriteString(styles.LabelStyle.Render("Duration:") + " " + styles.ValueStyle.Render(durationStr))
+	content.WriteString("\n")
+
+	// Validation Status
+	content.WriteString("\n")
+	content.WriteString(styles.SectionStyle.Render("🔍 Validation"))
+	content.WriteString("\n")
+
+	if m.validationErr != nil {
+		content.WriteString(styles.ErrorStyle.Render(fmt.Sprintf("⚠️  %s", m.validationErr.Error())))
+	} else {
+		content.WriteString(styles.SuccessStyle.Render("✅ All validations passed"))
+	}
+	content.WriteString("\n")
+
+	// Help
+	content.WriteString(styles.HelpStyle.Render("Press 'q' or 'esc' to quit"))
+
+	return content.String()
 }
 
 // markDayAsFinished marks the current day's JournalEntry as finished.
@@ -57,25 +144,37 @@ func markDayAsFinished(cmd *cobra.Command, args []string) error {
 			fmt.Println("No changes made...")
 			return nil
 		}
-		entry.EndDay()
-		entries[idx] = *entry
+		entries[idx].EndDay()
 		fmt.Printf("Data for %s overwrote. Saving...", dateStr)
 	} else {
 		entries[idx].EndDay()
 	}
 
-	err = validateEntry(entry)
-	if err != nil {
-		fmt.Printf("\nFound issues with entry: %v", err)
-		validationNote := journal.Note{Contents: fmt.Sprintf("Validation Error: %s", err)}
-		entry.AddNote(validationNote)
+	validationErr := validateEntry(&entries[idx])
+	if validationErr != nil {
+		validationNote := journal.Note{Contents: fmt.Sprintf("Validation Error: %s", validationErr)}
+		entries[idx].AddNote(validationNote)
 	}
 
 	err = journal.SaveEntries(entries, journalPath)
 	if err != nil {
 		return fmt.Errorf("Failed to save journal entries: %v\n", err)
 	}
-	return nil
+
+	// Calculate total work time for display
+	totalWorkTime := entries[idx].TotalWorkTime()
+
+	// Create and run the Bubble Tea program for styled summary
+	model := endModel{
+		entry:         &entries[idx],
+		date:          now,
+		totalWorkTime: totalWorkTime,
+		validationErr: validationErr,
+	}
+
+	p := tea.NewProgram(&model)
+	_, err = p.Run()
+	return err
 }
 
 func init() {

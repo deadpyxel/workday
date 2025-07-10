@@ -5,7 +5,9 @@ import (
 	"strings"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/deadpyxel/workday/internal/journal"
+	"github.com/deadpyxel/workday/internal/styles"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -20,6 +22,96 @@ It creates a new JournalEntry with the current date and time as the start time,
 appends it to the existing journal entries, and saves the updated journal entries to the file.
 After running this command, you can begin adding notes to the new workday entry.`,
 	RunE: startWorkDay,
+}
+
+type startModel struct {
+	startTime       time.Time
+	isNewEntry      bool
+	previousEndTime *time.Time
+	width           int
+	height          int
+	quitting        bool
+}
+
+func (m startModel) Init() tea.Cmd {
+	return nil
+}
+
+func (m startModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q", "esc", "ctrl+c":
+			m.quitting = true
+			return m, tea.Quit
+		}
+	}
+
+	return m, nil
+}
+
+func (m startModel) View() string {
+	if m.quitting {
+		return ""
+	}
+
+
+	var content strings.Builder
+
+	// Title
+	dateStr := m.startTime.Format("Monday, January 2, 2006")
+	if m.isNewEntry {
+		content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("🚀 Workday Started - %s", dateStr)))
+	} else {
+		content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("🔄 Workday Restarted - %s", dateStr)))
+	}
+	content.WriteString("\n\n")
+
+	// Start Details Section
+	content.WriteString(styles.SectionStyle.Render("⏰ Start Details"))
+	content.WriteString("\n")
+
+	startTime := m.startTime.Format("15:04")
+	content.WriteString(styles.LabelStyle.Render("Time:") + " " + styles.ValueStyle.Render(startTime))
+	content.WriteString("\n")
+
+	if m.isNewEntry {
+		content.WriteString(styles.LabelStyle.Render("Status:") + " " + styles.SuccessStyle.Render("New workday entry created"))
+	} else {
+		content.WriteString(styles.LabelStyle.Render("Status:") + " " + styles.InfoBlueStyle.Render("Existing entry overwritten"))
+	}
+	content.WriteString("\n")
+
+	// Previous Entry Info (if applicable)
+	if m.previousEndTime != nil {
+		content.WriteString("\n")
+		content.WriteString(styles.SectionStyle.Render("📝 Previous Entry"))
+		content.WriteString("\n")
+		
+		prevEndTime := m.previousEndTime.Format("15:04 on Jan 2")
+		content.WriteString(styles.LabelStyle.Render("End Time:") + " " + styles.ValueStyle.Render(fmt.Sprintf("Updated to %s", prevEndTime)))
+		content.WriteString("\n")
+	}
+
+	// Next Steps
+	content.WriteString("\n")
+	content.WriteString(styles.SectionStyle.Render("📋 Next Steps"))
+	content.WriteString("\n")
+	content.WriteString(styles.InfoBlueStyle.Render("• Add notes with: workday note \"Your note here\""))
+	content.WriteString("\n")
+	content.WriteString(styles.InfoBlueStyle.Render("• Take breaks with: workday break start \"lunch\""))
+	content.WriteString("\n")
+	content.WriteString(styles.InfoBlueStyle.Render("• End your day with: workday end"))
+	content.WriteString("\n")
+
+	// Help
+	content.WriteString(styles.HelpStyle.Render("Press 'q' or 'esc' to quit"))
+
+	return content.String()
 }
 
 // startWorkDay starts a new workday entry in the journal.
@@ -41,6 +133,8 @@ func startWorkDay(cmd *cobra.Command, args []string) error {
 	now := time.Now()
 	currentDayId := now.Format("20060102")
 	var lastEntry *journal.JournalEntry
+	var previousEndTime *time.Time
+
 	for i := len(entries) - 1; i >= 0; i-- {
 		if entries[i].ID[:8] != currentDayId {
 			lastEntry = &entries[i]
@@ -75,6 +169,7 @@ func startWorkDay(cmd *cobra.Command, args []string) error {
 				0,
 				lastEntry.StartTime.Location())
 			lastEntry.EndTime = finalEndTime
+			previousEndTime = &finalEndTime
 
 			err = journal.SaveEntries(entries, journalPath)
 			if err != nil {
@@ -87,6 +182,8 @@ func startWorkDay(cmd *cobra.Command, args []string) error {
 
 	dateStr := now.Format("2006-01-02")
 	_, idx := journal.FetchEntryByID(currentDayId, entries)
+	isNewEntry := idx == -1
+
 	if idx != -1 {
 		fmt.Printf("There is already an entry for %s. Do you want to override it? (y/N): ", dateStr)
 		userInput, err := getUserInput()
@@ -98,13 +195,26 @@ func startWorkDay(cmd *cobra.Command, args []string) error {
 			return nil
 		}
 		entries[idx] = *journal.NewJournalEntry()
-		fmt.Printf("Data for %s overwrote. Saving...", dateStr)
-		return journal.SaveEntries(entries, journalPath)
+	} else {
+		newEntry := journal.NewJournalEntry()
+		entries = append(entries, *newEntry)
 	}
-	newEntry := journal.NewJournalEntry()
-	entries = append(entries, *newEntry)
-	fmt.Printf("Added new Journal Entry for %s\n", dateStr)
-	return journal.SaveEntries(entries, journalPath)
+
+	err = journal.SaveEntries(entries, journalPath)
+	if err != nil {
+		return err
+	}
+
+	// Create and run the Bubble Tea program for styled confirmation
+	model := startModel{
+		startTime:       now,
+		isNewEntry:      isNewEntry,
+		previousEndTime: previousEndTime,
+	}
+
+	p := tea.NewProgram(&model)
+	_, err = p.Run()
+	return err
 }
 
 func getUserInput() (string, error) {
