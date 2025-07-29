@@ -15,15 +15,33 @@ A simple CLI written in go to help with my day to day activity tracking at work.
 
 ## Installation
 
+### Using Go Install
+
 Install workday with go
 
 ```bash
 go install github.com/deadpyxel/workday@latest
 ```
 
-And the you can just start to use it:
+### Using Pre-built Binaries
+
+Download the latest release for your platform from the [GitHub releases page](https://github.com/deadpyxel/workday/releases).
+
+Available platforms:
+- Linux (amd64, 386, arm64, arm)
+- macOS (amd64, arm64)
+- Windows (amd64, 386)
+
+### Usage
+
+After installation, you can start using workday:
 ```bash
 workday
+```
+
+Check the version:
+```bash
+workday version
 ```
 
 ## Configuration
@@ -73,12 +91,28 @@ Run the app
 ./bin/workday
 ```
 
+## Releases
+
+Releases are automated using [GoReleaser](https://goreleaser.com/) and GitHub Actions. When a new tag is pushed (format: `v*`), the release workflow will:
+
+1. Build binaries for all supported platforms
+2. Create checksums for all artifacts
+3. Generate release notes from commits
+4. Publish the release on GitHub
+
+To create a new release:
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
 ## Acknowledgements
 
  - Gopher's Public Discord
  - [cobra-cli](https://github.com/spf13/cobra-cli)
  - [Cobra Docs](https://github.com/spf13/cobra)
  - [Viper](https://github.com/spf13/viper)
+ - [GoReleaser](https://goreleaser.com/)
 
 ## License
 
