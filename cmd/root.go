@@ -10,6 +10,14 @@ import (
 
 var cfgFile string
 
+// Version information
+var (
+	appVersion = "dev"
+	appCommit  = "none"
+	appDate    = "unknown"
+	appBuiltBy = "unknown"
+)
+
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:   "workday",
@@ -28,6 +36,15 @@ For example, you can use 'workday start' to start a new workday, 'workday note' 
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
+// SetVersionInfo sets the version information from main
+func SetVersionInfo(version, commit, date, builtBy string) {
+	appVersion = version
+	appCommit = commit
+	appDate = date
+	appBuiltBy = builtBy
+	rootCmd.Version = version
+}
+
 func Execute() {
 	err := rootCmd.Execute()
 	if err != nil {
