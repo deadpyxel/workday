@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -256,11 +257,408 @@ func stopBreak(cmd *cobra.Command, args []string) error {
 	return err
 }
 
+// Break list command
+var breakListCmd = &cobra.Command{
+	Use:   "list [date]",
+	Short: "List breaks for a specific date",
+	Long:  "Lists all breaks for today or a specific date (format: YYYY-MM-DD)",
+	Args:  cobra.MaximumNArgs(1),
+	RunE:  listBreaks,
+}
+
+func listBreaks(cmd *cobra.Command, args []string) error {
+	journalPath := viper.GetString("journalPath")
+	entries, err := journal.LoadEntries(journalPath)
+	if err != nil {
+		return err
+	}
+
+	// Determine target date
+	var targetDate time.Time
+	var entryId string
+	
+	if len(args) > 0 {
+		targetDate, err = time.Parse("2006-01-02", args[0])
+		if err != nil {
+			return fmt.Errorf("invalid date format. Use YYYY-MM-DD")
+		}
+		entryId = targetDate.Format("20060102")
+	} else {
+		targetDate = time.Now()
+		entryId = targetDate.Format("20060102")
+	}
+
+	entry, idx := journal.FetchEntryByID(entryId, entries)
+	if idx == -1 {
+		return journal.EntryNotFoundError(entryId)
+	}
+
+	if len(entry.Breaks) == 0 {
+		fmt.Printf("No breaks found for %s\n", targetDate.Format("2006-01-02"))
+		return nil
+	}
+
+	// Create TUI model for break list
+	model := breakListModel{
+		entry:      entry,
+		targetDate: targetDate,
+		breaks:     entry.Breaks,
+	}
+
+	p := tea.NewProgram(&model)
+	_, err = p.Run()
+	return err
+}
+
+// Break list TUI model
+type breakListModel struct {
+	entry      *journal.JournalEntry
+	targetDate time.Time
+	breaks     []journal.Break
+	width      int
+	height     int
+	quitting   bool
+}
+
+func (m breakListModel) Init() tea.Cmd {
+	return nil
+}
+
+func (m breakListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q", "esc", "ctrl+c":
+			m.quitting = true
+			return m, tea.Quit
+		}
+	}
+	return m, nil
+}
+
+func (m breakListModel) View() string {
+	if m.quitting {
+		return ""
+	}
+
+	var content strings.Builder
+
+	// Title
+	content.WriteString(styles.TitleStyle.Render(fmt.Sprintf("☕ Breaks for %s", m.targetDate.Format("Monday, January 2, 2006"))))
+	content.WriteString("\n\n")
+
+	// Break list table
+	if len(m.breaks) == 0 {
+		content.WriteString(styles.InfoStyle.Render("No breaks recorded for this date"))
+		content.WriteString("\n")
+	} else {
+		// Table header
+		content.WriteString(styles.HeaderStyle.Render("ID") + "  ")
+		content.WriteString(styles.HeaderStyle.Render("Start Time") + "  ")
+		content.WriteString(styles.HeaderStyle.Render("End Time") + "    ")
+		content.WriteString(styles.HeaderStyle.Render("Duration") + "  ")
+		content.WriteString(styles.HeaderStyle.Render("Reason"))
+		content.WriteString("\n")
+		content.WriteString(strings.Repeat("─", 80) + "\n")
+
+		// Break rows
+		var totalDuration time.Duration
+		for i, br := range m.breaks {
+			id := fmt.Sprintf("%d", i+1)
+			startTime := br.StartTime.Format("15:04")
+			endTime := "ongoing"
+			duration := "N/A"
+			
+			if !br.EndTime.IsZero() {
+				endTime = br.EndTime.Format("15:04")
+				dur := br.Duration()
+				totalDuration += dur
+				if dur.Hours() >= 1 {
+					duration = fmt.Sprintf("%dh %dm", int(dur.Hours()), int(dur.Minutes())%60)
+				} else {
+					duration = fmt.Sprintf("%dm", int(dur.Minutes()))
+				}
+			}
+
+			content.WriteString(styles.CellStyle.Render(fmt.Sprintf("%-2s", id)) + "  ")
+			content.WriteString(styles.CellStyle.Render(fmt.Sprintf("%-10s", startTime)) + "  ")
+			content.WriteString(styles.CellStyle.Render(fmt.Sprintf("%-10s", endTime)) + "  ")
+			content.WriteString(styles.CellStyle.Render(fmt.Sprintf("%-8s", duration)) + "  ")
+			content.WriteString(styles.ValueStyle.Render(br.Reason))
+			content.WriteString("\n")
+		}
+
+		// Summary
+		if totalDuration > 0 {
+			content.WriteString("\n")
+			content.WriteString(styles.SummaryStyle.Render("Summary"))
+			content.WriteString("\n")
+			
+			totalHours := int(totalDuration.Hours())
+			totalMinutes := int(totalDuration.Minutes()) % 60
+			totalTimeStr := fmt.Sprintf("%dh %dm", totalHours, totalMinutes)
+			if totalHours == 0 {
+				totalTimeStr = fmt.Sprintf("%dm", totalMinutes)
+			}
+			
+			content.WriteString(styles.LabelStyle.Render("Total breaks:") + " " + styles.ValueStyle.Render(fmt.Sprintf("%d", len(m.breaks))))
+			content.WriteString("\n")
+			content.WriteString(styles.LabelStyle.Render("Total time:") + " " + styles.SuccessStyle.Render(totalTimeStr))
+			content.WriteString("\n")
+		}
+	}
+
+	content.WriteString("\n")
+	content.WriteString(styles.InfoStyle.Render("💡 Use 'workday break modify <id> ...' to edit breaks"))
+	content.WriteString("\n")
+	content.WriteString(styles.HelpStyle.Render("Press 'q' or 'esc' to quit"))
+
+	return content.String()
+}
+
+// Break modify command
+var breakModifyCmd = &cobra.Command{
+	Use:   "modify <id> [field:value...]",
+	Short: "Modify a break entry",
+	Long: `Modify a break entry using task-style syntax.
+	
+Examples:
+  workday break modify 1 reason:"Doctor appointment"
+  workday break modify 2 start:14:30 end:15:15
+  workday break modify 3 duration:45m
+  workday break modify 1 --date 2024-07-29 reason:"Updated reason"`,
+	Args: cobra.MinimumNArgs(2),
+	RunE: modifyBreak,
+}
+
+var breakDeleteCmd = &cobra.Command{
+	Use:   "delete <id>",
+	Short: "Delete a break entry",
+	Long:  "Delete a specific break entry by ID",
+	Args:  cobra.ExactArgs(1),
+	RunE:  deleteBreak,
+}
+
+func modifyBreak(cmd *cobra.Command, args []string) error {
+	journalPath := viper.GetString("journalPath")
+	entries, err := journal.LoadEntries(journalPath)
+	if err != nil {
+		return err
+	}
+
+	// Parse break ID
+	breakID := args[0]
+	breakIndex, err := parseBreakID(breakID)
+	if err != nil {
+		return err
+	}
+
+	// Get target date
+	dateFlag, _ := cmd.Flags().GetString("date")
+	var targetDate time.Time
+	var entryId string
+	
+	if dateFlag != "" {
+		targetDate, err = time.Parse("2006-01-02", dateFlag)
+		if err != nil {
+			return fmt.Errorf("invalid date format. Use YYYY-MM-DD")
+		}
+		entryId = targetDate.Format("20060102")
+	} else {
+		targetDate = time.Now()
+		entryId = targetDate.Format("20060102")
+	}
+
+	entry, idx := journal.FetchEntryByID(entryId, entries)
+	if idx == -1 {
+		return journal.EntryNotFoundError(entryId)
+	}
+
+	if breakIndex >= len(entry.Breaks) {
+		return fmt.Errorf("break ID %s not found. Use 'workday break list' to see available breaks", breakID)
+	}
+
+	// Parse modifications
+	modifications := args[1:]
+	originalBreak := entry.Breaks[breakIndex]
+	
+	for _, mod := range modifications {
+		err = applyBreakModification(&entry.Breaks[breakIndex], mod)
+		if err != nil {
+			return fmt.Errorf("error applying modification '%s': %v", mod, err)
+		}
+	}
+
+	// Validate the modified break
+	if result := journal.ValidateBreak(entry.Breaks[breakIndex]); !result.IsValid {
+		return fmt.Errorf("invalid break modification: %v", result.Error)
+	}
+
+	// Save changes
+	entries[idx] = *entry
+	err = journal.SaveEntries(entries, journalPath)
+	if err != nil {
+		return err
+	}
+
+	// Show confirmation
+	fmt.Printf("✅ Break %s modified successfully\n", breakID)
+	fmt.Printf("Original: %s %s-%s (%s)\n", 
+		originalBreak.StartTime.Format("15:04"),
+		originalBreak.EndTime.Format("15:04"),
+		originalBreak.Reason,
+		originalBreak.Duration())
+		
+	newBreak := entry.Breaks[breakIndex]
+	endTime := "ongoing"
+	duration := "N/A"
+	if !newBreak.EndTime.IsZero() {
+		endTime = newBreak.EndTime.Format("15:04")
+		duration = newBreak.Duration().String()
+	}
+	
+	fmt.Printf("Updated:  %s %s-%s (%s)\n", 
+		newBreak.StartTime.Format("15:04"),
+		endTime,
+		newBreak.Reason,
+		duration)
+
+	return nil
+}
+
+func deleteBreak(cmd *cobra.Command, args []string) error {
+	journalPath := viper.GetString("journalPath")
+	entries, err := journal.LoadEntries(journalPath)
+	if err != nil {
+		return err
+	}
+
+	// Parse break ID
+	breakID := args[0]
+	breakIndex, err := parseBreakID(breakID)
+	if err != nil {
+		return err
+	}
+
+	// Get target date
+	dateFlag, _ := cmd.Flags().GetString("date")
+	var targetDate time.Time
+	var entryId string
+	
+	if dateFlag != "" {
+		targetDate, err = time.Parse("2006-01-02", dateFlag)
+		if err != nil {
+			return fmt.Errorf("invalid date format. Use YYYY-MM-DD")
+		}
+		entryId = targetDate.Format("20060102")
+	} else {
+		targetDate = time.Now()
+		entryId = targetDate.Format("20060102")
+	}
+
+	entry, idx := journal.FetchEntryByID(entryId, entries)
+	if idx == -1 {
+		return journal.EntryNotFoundError(entryId)
+	}
+
+	if breakIndex >= len(entry.Breaks) {
+		return fmt.Errorf("break ID %s not found. Use 'workday break list' to see available breaks", breakID)
+	}
+
+	// Confirm deletion
+	deletedBreak := entry.Breaks[breakIndex]
+	fmt.Printf("Delete break: %s %s-%s (%s)? [y/N]: ", 
+		deletedBreak.StartTime.Format("15:04"),
+		deletedBreak.EndTime.Format("15:04"),
+		deletedBreak.Reason,
+		deletedBreak.Duration())
+
+	var response string
+	fmt.Scanln(&response)
+	if strings.ToLower(response) != "y" && strings.ToLower(response) != "yes" {
+		fmt.Println("Deletion cancelled")
+		return nil
+	}
+
+	// Remove break from slice
+	entry.Breaks = append(entry.Breaks[:breakIndex], entry.Breaks[breakIndex+1:]...)
+	
+	// Save changes
+	entries[idx] = *entry
+	err = journal.SaveEntries(entries, journalPath)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("✅ Break %s deleted successfully\n", breakID)
+	return nil
+}
+
+func parseBreakID(id string) (int, error) {
+	breakIndex, err := strconv.Atoi(id)
+	if err != nil {
+		return 0, fmt.Errorf("invalid break ID '%s'. Expected a number", id)
+	}
+	if breakIndex < 1 {
+		return 0, fmt.Errorf("break ID must be >= 1")
+	}
+	return breakIndex - 1, nil // Convert to 0-based index
+}
+
+func applyBreakModification(br *journal.Break, modification string) error {
+	parts := strings.SplitN(modification, ":", 2)
+	if len(parts) != 2 {
+		return fmt.Errorf("invalid modification format. Use field:value")
+	}
+
+	field := strings.ToLower(strings.TrimSpace(parts[0]))
+	value := strings.TrimSpace(parts[1])
+
+	switch field {
+	case "reason":
+		br.Reason = value
+	case "start":
+		startTime, err := time.Parse("15:04", value)
+		if err != nil {
+			return fmt.Errorf("invalid start time format. Use HH:MM")
+		}
+		// Keep the same date, just change time
+		br.StartTime = time.Date(br.StartTime.Year(), br.StartTime.Month(), br.StartTime.Day(),
+			startTime.Hour(), startTime.Minute(), 0, 0, br.StartTime.Location())
+	case "end":
+		endTime, err := time.Parse("15:04", value)
+		if err != nil {
+			return fmt.Errorf("invalid end time format. Use HH:MM")
+		}
+		// Keep the same date, just change time
+		br.EndTime = time.Date(br.StartTime.Year(), br.StartTime.Month(), br.StartTime.Day(),
+			endTime.Hour(), endTime.Minute(), 0, 0, br.StartTime.Location())
+	case "duration":
+		duration, err := time.ParseDuration(value)
+		if err != nil {
+			return fmt.Errorf("invalid duration format. Use formats like '30m', '1h30m'")
+		}
+		br.EndTime = br.StartTime.Add(duration)
+	default:
+		return fmt.Errorf("unknown field '%s'. Available fields: reason, start, end, duration", field)
+	}
+
+	return nil
+}
+
 func init() {
 	rootCmd.AddCommand(breakCmd)
 	breakCmd.AddCommand(breakStartCmd)
 	breakCmd.AddCommand(breakStopCmd)
+	breakCmd.AddCommand(breakListCmd)
+	breakCmd.AddCommand(breakModifyCmd)
+	breakCmd.AddCommand(breakDeleteCmd)
 
-	// Add flag to the `start` subcommand
+	// Add flags
 	breakStartCmd.Flags().StringVarP(&breakReason, "reason", "r", "", "Reason for the break")
+	breakModifyCmd.Flags().StringP("date", "d", "", "Target date (YYYY-MM-DD)")
+	breakDeleteCmd.Flags().StringP("date", "d", "", "Target date (YYYY-MM-DD)")
 }
