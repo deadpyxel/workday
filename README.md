@@ -1,3 +1,8 @@
+[![Go Reference](https://pkg.go.dev/badge/github.com/deadpyxel/workday.svg)](https://pkg.go.dev/github.com/deadpyxel/workday)
+[![Go Report Card](https://goreportcard.com/badge/github.com/deadpyxel/workday)](https://goreportcard.com/report/github.com/deadpyxel/workday)
+[![GitHub release](https://img.shields.io/github/release/deadpyxel/workday.svg)](https://github.com/deadpyxel/workday/releases)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/deadpyxel/workday/go-ci.yml?branch=main)](https://github.com/deadpyxel/workday/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # Workday
 
