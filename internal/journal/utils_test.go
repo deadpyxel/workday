@@ -167,3 +167,143 @@ func BenchmarkFetchEntryByID(b *testing.B) {
 		FetchEntryByID(strconv.Itoa(i%1e6), entries)
 	}
 }
+
+func TestParseNoteTags(t *testing.T) {
+	tests := []struct {
+		name            string
+		input           string
+		expectedContent string
+		expectedTags    []string
+	}{
+		{
+			name:            "simple note without tags",
+			input:           "Just a simple note",
+			expectedContent: "Just a simple note",
+			expectedTags:    nil,
+		},
+		{
+			name:            "note with single tag",
+			input:           "Meeting completed #progress",
+			expectedContent: "Meeting completed",
+			expectedTags:    []string{"progress"},
+		},
+		{
+			name:            "note with multiple tags",
+			input:           "Fixed bug #bugfix #urgent #team-alpha",
+			expectedContent: "Fixed bug",
+			expectedTags:    []string{"bugfix", "urgent", "team-alpha"},
+		},
+		{
+			name:            "note with tags in middle",
+			input:           "Started #project review and finished #testing",
+			expectedContent: "Started review and finished",
+			expectedTags:    []string{"project", "testing"},
+		},
+		{
+			name:            "note with tags and extra whitespace",
+			input:           "Meeting   done    #progress   #team   ",
+			expectedContent: "Meeting done",
+			expectedTags:    []string{"progress", "team"},
+		},
+		{
+			name:            "empty string",
+			input:           "",
+			expectedContent: "",
+			expectedTags:    nil,
+		},
+		{
+			name:            "whitespace only",
+			input:           "   ",
+			expectedContent: "",
+			expectedTags:    nil,
+		},
+		{
+			name:            "tags with underscores and hyphens",
+			input:           "Update #bug_fix #team-sync #v1_2_3",
+			expectedContent: "Update",
+			expectedTags:    []string{"bug_fix", "team-sync", "v1_2_3"},
+		},
+		{
+			name:            "tags with numbers",
+			input:           "Issue resolved #bug123 #sprint2024",
+			expectedContent: "Issue resolved",
+			expectedTags:    []string{"bug123", "sprint2024"},
+		},
+		{
+			name:            "invalid tags (special characters)",
+			input:           "Test #invalid@tag #valid-tag #another$invalid",
+			expectedContent: "Test @tag $invalid",
+			expectedTags:    []string{"invalid", "valid-tag", "another"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			content, tags := ParseNoteTags(tt.input)
+
+			if content != tt.expectedContent {
+				t.Errorf("Expected content %q, got %q", tt.expectedContent, content)
+			}
+
+			if len(tags) != len(tt.expectedTags) {
+				t.Errorf("Expected %d tags, got %d", len(tt.expectedTags), len(tags))
+				return
+			}
+
+			for i, expectedTag := range tt.expectedTags {
+				if i >= len(tags) || tags[i] != expectedTag {
+					t.Errorf("Expected tag[%d] to be %q, got %q", i, expectedTag, tags[i])
+				}
+			}
+		})
+	}
+}
+
+func TestFormatNoteWithTags(t *testing.T) {
+	tests := []struct {
+		name     string
+		content  string
+		tags     []string
+		expected string
+	}{
+		{
+			name:     "note without tags",
+			content:  "Simple note",
+			tags:     nil,
+			expected: "Simple note",
+		},
+		{
+			name:     "note with empty tags",
+			content:  "Simple note",
+			tags:     []string{},
+			expected: "Simple note",
+		},
+		{
+			name:     "note with single tag",
+			content:  "Meeting done",
+			tags:     []string{"progress"},
+			expected: "Meeting done #progress",
+		},
+		{
+			name:     "note with multiple tags",
+			content:  "Bug fixed",
+			tags:     []string{"bugfix", "urgent", "team-alpha"},
+			expected: "Bug fixed #bugfix #urgent #team-alpha",
+		},
+		{
+			name:     "empty content with tags",
+			content:  "",
+			tags:     []string{"tag1", "tag2"},
+			expected: " #tag1 #tag2",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := FormatNoteWithTags(tt.content, tt.tags)
+			if result != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, result)
+			}
+		})
+	}
+}

@@ -170,3 +170,95 @@ func TestNoteStringer(t *testing.T) {
 		}
 	})
 }
+
+func TestNoteParseContent(t *testing.T) {
+	tests := []struct {
+		name            string
+		initialContent  string
+		initialTags     []string
+		expectedContent string
+		expectedTags    []string
+	}{
+		{
+			name:            "simple content without tags",
+			initialContent:  "Just a simple note",
+			initialTags:     nil,
+			expectedContent: "Just a simple note",
+			expectedTags:    nil,
+		},
+		{
+			name:            "content with single tag",
+			initialContent:  "Meeting completed #progress",
+			initialTags:     nil,
+			expectedContent: "Meeting completed",
+			expectedTags:    []string{"progress"},
+		},
+		{
+			name:            "content with multiple tags",
+			initialContent:  "Fixed bug #bugfix #urgent",
+			initialTags:     nil,
+			expectedContent: "Fixed bug",
+			expectedTags:    []string{"bugfix", "urgent"},
+		},
+		{
+			name:            "content with tags and existing tags (no duplicates)",
+			initialContent:  "Update done #progress #team",
+			initialTags:     []string{"existing", "progress"},
+			expectedContent: "Update done",
+			expectedTags:    []string{"existing", "progress", "team"},
+		},
+		{
+			name:            "content with tags and existing tags (with duplicates)",
+			initialContent:  "Meeting #progress #team #urgent",
+			initialTags:     []string{"team", "existing"},
+			expectedContent: "Meeting",
+			expectedTags:    []string{"team", "existing", "progress", "urgent"},
+		},
+		{
+			name:            "empty content",
+			initialContent:  "",
+			initialTags:     []string{"existing"},
+			expectedContent: "",
+			expectedTags:    []string{"existing"},
+		},
+		{
+			name:            "whitespace only content",
+			initialContent:  "   ",
+			initialTags:     []string{"existing"},
+			expectedContent: "",
+			expectedTags:    []string{"existing"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			note := Note{
+				Contents: tt.initialContent,
+				Tags:     tt.initialTags,
+			}
+
+			note.ParseContent()
+
+			if note.Contents != tt.expectedContent {
+				t.Errorf("Expected content %q, got %q", tt.expectedContent, note.Contents)
+			}
+
+			if len(note.Tags) != len(tt.expectedTags) {
+				t.Errorf("Expected %d tags, got %d", len(tt.expectedTags), len(note.Tags))
+				return
+			}
+
+			// Check that all expected tags are present (order may vary due to deduplication)
+			tagMap := make(map[string]bool)
+			for _, tag := range note.Tags {
+				tagMap[tag] = true
+			}
+
+			for _, expectedTag := range tt.expectedTags {
+				if !tagMap[expectedTag] {
+					t.Errorf("Expected tag %q not found in result tags %v", expectedTag, note.Tags)
+				}
+			}
+		})
+	}
+}
