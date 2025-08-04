@@ -34,10 +34,10 @@ func addNoteToCurrentDay(cmd *cobra.Command, args []string) error {
 	}
 
 	newNote := args[0]
-	tags := strings.Split(tags, ",")
+	tagList := strings.Split(tags, ",")
 	// If the result of the split is a single, empty string, make tags empty
-	if len(tags) == 1 && tags[0] == "" {
-		tags = []string{}
+	if len(tagList) == 1 && tagList[0] == "" {
+		tagList = []string{}
 	}
 
 	// Find current day entry using validation helper
@@ -48,7 +48,7 @@ func addNoteToCurrentDay(cmd *cobra.Command, args []string) error {
 	}
 
 	// Create and validate note
-	note := journal.Note{Contents: newNote, Tags: tags}
+	note := journal.Note{Contents: newNote, Tags: tagList}
 	if result := journal.ValidateNote(note); !result.IsValid {
 		return result.Error
 	}
