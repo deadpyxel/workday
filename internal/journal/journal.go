@@ -18,6 +18,27 @@ func (n *Note) String() string {
 	return fmt.Sprintf("- %s%s", n.Contents, tags)
 }
 
+// ParseContent extracts hashtags from the note content and updates both
+// the Contents and Tags fields. This allows users to write notes with
+// inline tags like "Meeting done #progress #team" and have them automatically
+// parsed into separate fields.
+func (n *Note) ParseContent() {
+	cleanContent, tags := ParseNoteTags(n.Contents)
+	n.Contents = cleanContent
+
+	// Merge with existing tags, avoiding duplicates
+	existingTags := make(map[string]bool)
+	for _, tag := range n.Tags {
+		existingTags[tag] = true
+	}
+
+	for _, tag := range tags {
+		if !existingTags[tag] {
+			n.Tags = append(n.Tags, tag)
+		}
+	}
+}
+
 type Break struct {
 	StartTime time.Time `json:"start_time"`
 	EndTime   time.Time `json:"end_time"`

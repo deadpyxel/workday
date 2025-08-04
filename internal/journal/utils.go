@@ -1,6 +1,8 @@
 package journal
 
 import (
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -120,4 +122,56 @@ func CalculateTotalTime(entries []JournalEntry) (time.Duration, error) {
 		d += entry.EndTime.Sub(entry.StartTime)
 	}
 	return d, nil
+}
+
+// ParseNoteTags extracts hashtags from note content and returns cleaned content and tags.
+// Tags are identified by the pattern #tagname and are removed from the content.
+// Multiple consecutive spaces are collapsed to single spaces.
+//
+// Example:
+//
+//	content: "Meeting completed #progress #team-sync"
+//	returns: ("Meeting completed", ["progress", "team-sync"])
+func ParseNoteTags(content string) (string, []string) {
+	if strings.TrimSpace(content) == "" {
+		return "", nil
+	}
+
+	// Regular expression to match hashtags
+	// Matches # followed by alphanumeric characters, hyphens, and underscores
+	tagRegex := regexp.MustCompile(`#([a-zA-Z0-9_-]+)`)
+
+	// Find all tags
+	matches := tagRegex.FindAllStringSubmatch(content, -1)
+	var tags []string
+	for _, match := range matches {
+		if len(match) > 1 {
+			tags = append(tags, match[1])
+		}
+	}
+
+	// Remove tags from content
+	cleanContent := tagRegex.ReplaceAllString(content, "")
+
+	// Clean up extra whitespace
+	cleanContent = regexp.MustCompile(`\s+`).ReplaceAllString(cleanContent, " ")
+	cleanContent = strings.TrimSpace(cleanContent)
+
+	return cleanContent, tags
+}
+
+// FormatNoteWithTags formats a note with its tags for display.
+// If the note has no tags, returns just the content.
+// If the note has tags, appends them in the format " #tag1 #tag2"
+func FormatNoteWithTags(content string, tags []string) string {
+	if len(tags) == 0 {
+		return content
+	}
+
+	var tagStrings []string
+	for _, tag := range tags {
+		tagStrings = append(tagStrings, "#"+tag)
+	}
+
+	return content + " " + strings.Join(tagStrings, " ")
 }
