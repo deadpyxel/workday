@@ -143,3 +143,33 @@ func ValidateConfigDuration(durationStr string, fieldName string) (time.Duration
 
 	return duration, nil
 }
+
+// ValidateTimeSegment validates a time segment
+func ValidateTimeSegment(segment TimeSegment) error {
+	if strings.TrimSpace(segment.Project) == "" {
+		return ValidationError("project", "project name is required")
+	}
+
+	if strings.TrimSpace(segment.Task) == "" {
+		return ValidationError("task", "task name is required")
+	}
+
+	if segment.StartTime.IsZero() {
+		return ValidationError("start_time", "start time is required")
+	}
+
+	// If end time is set, validate it's after start time
+	if !segment.EndTime.IsZero() {
+		if segment.EndTime.Before(segment.StartTime) || segment.EndTime.Equal(segment.StartTime) {
+			return ValidationError("end_time", "end time must be after start time")
+		}
+
+		// Check minimum duration (5 minutes)
+		duration := segment.EndTime.Sub(segment.StartTime)
+		if duration < 5*time.Minute {
+			return ValidationError("duration", "time segment duration must be at least 5 minutes")
+		}
+	}
+
+	return nil
+}

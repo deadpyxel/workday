@@ -14,7 +14,9 @@ func bootstrapFileContents(entries []JournalEntry, filename string) error {
 		return err
 	}
 	defer f.Close()
-	data, err := json.Marshal(entries)
+	// Create proper Journal structure with version information
+	journal := Journal{Version: SchemaVersion, Entries: entries}
+	data, err := json.Marshal(journal)
 	if err != nil {
 		return err
 	}
