@@ -349,6 +349,120 @@ func TestValidateTimeFormat(t *testing.T) {
 	}
 }
 
+func TestValidateBreakOverlap(t *testing.T) {
+	baseDate := time.Date(2024, 7, 15, 0, 0, 0, 0, time.Local)
+
+	// Helper to create a break on baseDate at given hours:minutes
+	makeBreak := func(startH, startM, endH, endM int, reason string) Break {
+		return Break{
+			StartTime: baseDate.Add(time.Duration(startH)*time.Hour + time.Duration(startM)*time.Minute),
+			EndTime:   baseDate.Add(time.Duration(endH)*time.Hour + time.Duration(endM)*time.Minute),
+			Reason:    reason,
+		}
+	}
+
+	existing := []Break{
+		makeBreak(10, 0, 10, 30, "coffee"),  // 10:00-10:30
+		makeBreak(12, 0, 13, 0, "lunch"),    // 12:00-13:00
+		makeBreak(15, 0, 15, 15, "stretch"), // 15:00-15:15
+	}
+
+	tests := []struct {
+		name     string
+		newBreak Break
+		existing []Break
+		expected bool
+	}{
+		{
+			name:     "no overlap - before all existing",
+			newBreak: makeBreak(8, 0, 9, 0, "early"),
+			existing: existing,
+			expected: true,
+		},
+		{
+			name:     "no overlap - between existing breaks",
+			newBreak: makeBreak(11, 0, 11, 30, "snack"),
+			existing: existing,
+			expected: true,
+		},
+		{
+			name:     "no overlap - after all existing",
+			newBreak: makeBreak(16, 0, 16, 30, "late"),
+			existing: existing,
+			expected: true,
+		},
+		{
+			name:     "no overlap - adjacent to existing (end touches start)",
+			newBreak: makeBreak(10, 30, 11, 0, "adjacent"),
+			existing: existing,
+			expected: true,
+		},
+		{
+			name:     "no overlap - adjacent to existing (start touches end)",
+			newBreak: makeBreak(11, 0, 12, 0, "adjacent before lunch"),
+			existing: existing,
+			expected: true,
+		},
+		{
+			name:     "overlap - completely within existing break",
+			newBreak: makeBreak(12, 15, 12, 45, "during lunch"),
+			existing: existing,
+			expected: false,
+		},
+		{
+			name:     "overlap - starts before, ends during existing",
+			newBreak: makeBreak(9, 45, 10, 15, "overlaps coffee start"),
+			existing: existing,
+			expected: false,
+		},
+		{
+			name:     "overlap - starts during, ends after existing",
+			newBreak: makeBreak(12, 30, 13, 30, "overlaps lunch end"),
+			existing: existing,
+			expected: false,
+		},
+		{
+			name:     "overlap - completely encompasses existing break",
+			newBreak: makeBreak(9, 0, 11, 0, "engulfs coffee"),
+			existing: existing,
+			expected: false,
+		},
+		{
+			name:     "no overlap - empty existing breaks",
+			newBreak: makeBreak(10, 0, 10, 30, "any"),
+			existing: []Break{},
+			expected: true,
+		},
+		{
+			name: "skip ongoing break - no conflict with zero EndTime",
+			newBreak: makeBreak(10, 0, 10, 30, "test"),
+			existing: []Break{
+				{
+					StartTime: baseDate.Add(9 * time.Hour),
+					EndTime:   time.Time{}, // ongoing
+					Reason:    "ongoing",
+				},
+			},
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ValidateBreakOverlap(tt.newBreak, tt.existing)
+			if result.IsValid != tt.expected {
+				t.Errorf("ValidateBreakOverlap() = %v, expected %v", result.IsValid, tt.expected)
+				if result.Error != nil {
+					t.Errorf("Error: %v", result.Error)
+				}
+			}
+			if !tt.expected && result.Error == nil {
+				t.Error("Expected error for overlapping break, but got nil")
+			}
+		})
+	}
+}
+
 func TestValidateConfigDuration(t *testing.T) {
 	tests := []struct {
 		name        string

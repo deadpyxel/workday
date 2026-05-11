@@ -442,6 +442,20 @@ var breakDeleteCmd = &cobra.Command{
 	RunE:  deleteBreak,
 }
 
+var breakAddCmd = &cobra.Command{
+	Use:   "add start:HH:MM end:HH:MM reason:text",
+	Short: "Add a completed break with explicit start and end times",
+	Long: `Add a completed break entry with explicit start and end times.
+Useful for retroactively logging breaks you forgot to track in real-time.
+
+Examples:
+  workday break add start:12:00 end:13:00 reason:lunch
+  workday break add start:15:00 end:15:15 reason:break
+  workday break add start:09:30 end:10:00 reason:drive`,
+	Args: cobra.MinimumNArgs(2),
+	RunE: addBreak,
+}
+
 func modifyBreak(cmd *cobra.Command, args []string) error {
 	journalPath := viper.GetString("journalPath")
 	entries, err := journal.LoadEntries(journalPath)
@@ -597,6 +611,118 @@ func deleteBreak(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func addBreak(cmd *cobra.Command, args []string) error {
+	journalPath := viper.GetString("journalPath")
+	entries, err := journal.LoadEntries(journalPath)
+	if err != nil {
+		return err
+	}
+
+	now := time.Now()
+	currentDayId := now.Format("20060102")
+	entry, idx := journal.FetchEntryByID(currentDayId, entries)
+	if idx == -1 {
+		return journal.EntryNotFoundError(currentDayId)
+	}
+
+	// Parse field:value arguments
+	var startStr, endStr, reason string
+	for _, arg := range args {
+		parts := strings.SplitN(arg, ":", 2)
+		if len(parts) != 2 {
+			return fmt.Errorf("invalid argument format '%s'. Use field:value (e.g., start:12:00)", arg)
+		}
+		field := strings.ToLower(strings.TrimSpace(parts[0]))
+		value := strings.TrimSpace(parts[1])
+
+		switch field {
+		case "start":
+			startStr = value
+		case "end":
+			endStr = value
+		case "reason":
+			reason = value
+		default:
+			return fmt.Errorf("unknown field '%s'. Available fields: start, end, reason", field)
+		}
+	}
+
+	// Validate required fields
+	if startStr == "" {
+		return fmt.Errorf("start time is required. Usage: workday break add start:HH:MM end:HH:MM reason:text")
+	}
+	if endStr == "" {
+		return fmt.Errorf("end time is required. Usage: workday break add start:HH:MM end:HH:MM reason:text")
+	}
+	if strings.TrimSpace(reason) == "" {
+		return fmt.Errorf("reason is required. Usage: workday break add start:HH:MM end:HH:MM reason:text")
+	}
+
+	// Parse start time
+	startTime, err := time.Parse("15:04", startStr)
+	if err != nil {
+		return fmt.Errorf("invalid start time format '%s'. Use HH:MM", startStr)
+	}
+
+	// Parse end time
+	endTime, err := time.Parse("15:04", endStr)
+	if err != nil {
+		return fmt.Errorf("invalid end time format '%s'. Use HH:MM", endStr)
+	}
+
+	// Construct the break using today's date with the specified times
+	newBreak := journal.Break{
+		StartTime: time.Date(now.Year(), now.Month(), now.Day(),
+			startTime.Hour(), startTime.Minute(), 0, 0, now.Location()),
+		EndTime: time.Date(now.Year(), now.Month(), now.Day(),
+			endTime.Hour(), endTime.Minute(), 0, 0, now.Location()),
+		Reason: reason,
+	}
+
+	// Validate the break (checks start not zero, end after start, reason non-empty)
+	if result := journal.ValidateBreak(newBreak); !result.IsValid {
+		return fmt.Errorf("invalid break: %v", result.Error)
+	}
+
+	// Validate no overlap with existing breaks
+	if result := journal.ValidateBreakOverlap(newBreak, entry.Breaks); !result.IsValid {
+		return fmt.Errorf("cannot add break: %v", result.Error)
+	}
+
+	// Append the break and save
+	entry.Breaks = append(entry.Breaks, newBreak)
+	entries[idx] = *entry
+
+	err = journal.SaveEntries(entries, journalPath)
+	if err != nil {
+		return err
+	}
+
+	// Calculate daily break statistics
+	totalDayBreaks := len(entry.Breaks)
+	var totalBreakTime time.Duration
+	for _, br := range entry.Breaks {
+		if !br.EndTime.IsZero() {
+			totalBreakTime += br.EndTime.Sub(br.StartTime)
+		}
+	}
+
+	// Display TUI confirmation
+	breakDuration := newBreak.EndTime.Sub(newBreak.StartTime)
+	model := breakModel{
+		isStarting:     false,
+		breakTime:      newBreak.EndTime,
+		reason:         reason,
+		duration:       &breakDuration,
+		totalDayBreaks: totalDayBreaks,
+		totalBreakTime: totalBreakTime,
+	}
+
+	p := tea.NewProgram(&model)
+	_, err = p.Run()
+	return err
+}
+
 func parseBreakID(id string) (int, error) {
 	breakIndex, err := strconv.Atoi(id)
 	if err != nil {
@@ -656,6 +782,7 @@ func init() {
 	breakCmd.AddCommand(breakListCmd)
 	breakCmd.AddCommand(breakModifyCmd)
 	breakCmd.AddCommand(breakDeleteCmd)
+	breakCmd.AddCommand(breakAddCmd)
 
 	// Add flags
 	breakStartCmd.Flags().StringVarP(&breakReason, "reason", "r", "", "Reason for the break")

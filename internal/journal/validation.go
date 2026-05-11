@@ -1,6 +1,7 @@
 package journal
 
 import (
+	"fmt"
 	"strings"
 	"time"
 )
@@ -142,6 +143,27 @@ func ValidateConfigDuration(durationStr string, fieldName string) (time.Duration
 	}
 
 	return duration, nil
+}
+
+// ValidateBreakOverlap checks that a new break does not overlap with existing breaks.
+// Ongoing breaks (with zero EndTime) are skipped since they can't be reliably compared.
+func ValidateBreakOverlap(newBreak Break, existing []Break) ValidationResult {
+	for i, br := range existing {
+		// Skip ongoing breaks — no end time means we can't determine overlap
+		if br.EndTime.IsZero() || newBreak.EndTime.IsZero() {
+			continue
+		}
+		// Overlap condition: newStart < existingEnd AND newEnd > existingStart
+		if newBreak.StartTime.Before(br.EndTime) && newBreak.EndTime.After(br.StartTime) {
+			return ValidationResult{
+				IsValid: false,
+				Error: BreakError(fmt.Sprintf("new break (%s-%s) overlaps with break %d (%s-%s)",
+					newBreak.StartTime.Format("15:04"), newBreak.EndTime.Format("15:04"),
+					i+1, br.StartTime.Format("15:04"), br.EndTime.Format("15:04"))),
+			}
+		}
+	}
+	return ValidationResult{IsValid: true, Error: nil}
 }
 
 // ValidateTimeSegment validates a time segment
