@@ -114,6 +114,87 @@ func NewJournalEntry() *JournalEntry {
 	return &JournalEntry{ID: id, StartTime: time.Now()}
 }
 
+// NewBackfilledEntry builds a complete JournalEntry for a past day from explicit
+// start/end times, breaks, and notes. The date argument supplies the entry ID
+// (YYYYMMDD) and the year/month/day used to anchor every time-of-day value, the
+// same anchoring pattern used by the break add command.
+//
+// Structural validation runs in a fixed order and returns a JournalError wrapping
+// ErrValidation on the first failure: start must be before end; each break must be
+// individually valid (ValidateBreak); each break must fall within [start, end]
+// (boundaries inclusive); and no break may overlap a prior one (ValidateBreakOverlap).
+// Each note's ParseContent is invoked so inline hashtags are extracted into Tags.
+func NewBackfilledEntry(date, start, end time.Time, breaks []Break, notes []Note) (*JournalEntry, error) {
+	id := date.Format("20060102")
+
+	// Anchor start/end to the entry's calendar day.
+	startTime := time.Date(date.Year(), date.Month(), date.Day(),
+		start.Hour(), start.Minute(), 0, 0, date.Location())
+	endTime := time.Date(date.Year(), date.Month(), date.Day(),
+		end.Hour(), end.Minute(), 0, 0, date.Location())
+
+	// 1. start must be strictly before end.
+	if !startTime.Before(endTime) {
+		return nil, ValidationError("time_range", fmt.Sprintf(
+			"start time %s must be before end time %s",
+			startTime.Format("15:04"), endTime.Format("15:04")))
+	}
+
+	// Anchor and validate each break against the day and the accumulated prior breaks.
+	anchoredBreaks := make([]Break, 0, len(breaks))
+	for _, br := range breaks {
+		anchored := Break{
+			StartTime: time.Date(date.Year(), date.Month(), date.Day(),
+				br.StartTime.Hour(), br.StartTime.Minute(), 0, 0, date.Location()),
+			EndTime: time.Date(date.Year(), date.Month(), date.Day(),
+				br.EndTime.Hour(), br.EndTime.Minute(), 0, 0, date.Location()),
+			Reason: br.Reason,
+		}
+
+		// 2. Each break must be individually valid (reason non-empty, end after start).
+		if result := ValidateBreak(anchored); !result.IsValid {
+			return nil, ValidationError("break", result.Error.Error())
+		}
+
+		// 3. Each break must fall within the day, boundaries inclusive.
+		if anchored.StartTime.Before(startTime) || anchored.EndTime.After(endTime) {
+			return nil, ValidationError("break", fmt.Sprintf(
+				"break %s-%s falls outside day %s-%s",
+				anchored.StartTime.Format("15:04"), anchored.EndTime.Format("15:04"),
+				startTime.Format("15:04"), endTime.Format("15:04")))
+		}
+
+		// 4. Each break must not overlap a prior break.
+		if result := ValidateBreakOverlap(anchored, anchoredBreaks); !result.IsValid {
+			return nil, ValidationError("break", result.Error.Error())
+		}
+
+		anchoredBreaks = append(anchoredBreaks, anchored)
+	}
+
+	// Parse hashtags out of each note so backfilled notes match the note command.
+	parsedNotes := make([]Note, 0, len(notes))
+	for _, note := range notes {
+		n := note
+		n.ParseContent()
+		parsedNotes = append(parsedNotes, n)
+	}
+
+	entry := &JournalEntry{
+		ID:        id,
+		StartTime: startTime,
+		EndTime:   endTime,
+	}
+	if len(anchoredBreaks) > 0 {
+		entry.Breaks = anchoredBreaks
+	}
+	if len(parsedNotes) > 0 {
+		entry.Notes = parsedNotes
+	}
+
+	return entry, nil
+}
+
 type Journal struct {
 	Version int            `json:"version"` // schema version for the loaded journal
 	Entries []JournalEntry `json:"entries"` // journal entries

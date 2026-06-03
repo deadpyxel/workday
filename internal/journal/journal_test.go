@@ -1,6 +1,7 @@
 package journal
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -261,4 +262,151 @@ func TestNoteParseContent(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNewBackfilledEntry(t *testing.T) {
+	// anchor is the day the entry is backfilled for.
+	anchor := time.Date(2024, 5, 27, 0, 0, 0, 0, time.UTC)
+	// at builds a time-of-day on the anchor day.
+	at := func(h, m int) time.Time {
+		return time.Date(2024, 5, 27, h, m, 0, 0, time.UTC)
+	}
+
+	t.Run("valid minimal start and end", func(t *testing.T) {
+		entry, err := NewBackfilledEntry(anchor, at(9, 0), at(17, 30), nil, nil)
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if entry.ID != "20240527" {
+			t.Errorf("Expected ID %q, got %q", "20240527", entry.ID)
+		}
+		if !entry.StartTime.Equal(at(9, 0)) {
+			t.Errorf("Expected StartTime %v, got %v", at(9, 0), entry.StartTime)
+		}
+		if !entry.EndTime.Equal(at(17, 30)) {
+			t.Errorf("Expected EndTime %v, got %v", at(17, 30), entry.EndTime)
+		}
+		if len(entry.Breaks) != 0 {
+			t.Errorf("Expected no breaks, got %v", entry.Breaks)
+		}
+		if len(entry.Notes) != 0 {
+			t.Errorf("Expected no notes, got %v", entry.Notes)
+		}
+	})
+
+	t.Run("valid with breaks inside day no overlap", func(t *testing.T) {
+		breaks := []Break{
+			{StartTime: at(12, 0), EndTime: at(13, 0), Reason: "lunch"},
+			{StartTime: at(15, 0), EndTime: at(15, 15), Reason: "coffee"},
+		}
+		entry, err := NewBackfilledEntry(anchor, at(9, 0), at(17, 30), breaks, nil)
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		if len(entry.Breaks) != 2 {
+			t.Fatalf("Expected 2 breaks, got %d", len(entry.Breaks))
+		}
+		if !entry.Breaks[0].StartTime.Equal(at(12, 0)) || !entry.Breaks[0].EndTime.Equal(at(13, 0)) {
+			t.Errorf("Expected first break 12:00-13:00, got %v-%v", entry.Breaks[0].StartTime, entry.Breaks[0].EndTime)
+		}
+		if entry.Breaks[1].Reason != "coffee" {
+			t.Errorf("Expected second break reason %q, got %q", "coffee", entry.Breaks[1].Reason)
+		}
+	})
+
+	t.Run("valid with notes including hashtags parses tags", func(t *testing.T) {
+		notes := []Note{
+			{Contents: "Reviewed PRs"},
+			{Contents: "Wrapped up release #progress #team"},
+		}
+		entry, err := NewBackfilledEntry(anchor, at(9, 0), at(17, 30), nil, notes)
+		if err != nil {
+			t.Fatalf("Expected no error, got %v", err)
+		}
+		want := []Note{
+			{Contents: "Reviewed PRs"},
+			{Contents: "Wrapped up release", Tags: []string{"progress", "team"}},
+		}
+		if !cmp.Equal(entry.Notes, want, cmp.Comparer(noteCompare)) {
+			t.Errorf("Expected notes %v, got %v", want, entry.Notes)
+		}
+	})
+
+	t.Run("invalid end before start", func(t *testing.T) {
+		_, err := NewBackfilledEntry(anchor, at(17, 0), at(9, 0), nil, nil)
+		if err == nil {
+			t.Fatalf("Expected error for end before start, got nil")
+		}
+		if !errors.Is(err, ErrValidation) {
+			t.Errorf("Expected ErrValidation, got %v", err)
+		}
+	})
+
+	t.Run("invalid end equal to start", func(t *testing.T) {
+		_, err := NewBackfilledEntry(anchor, at(9, 0), at(9, 0), nil, nil)
+		if err == nil {
+			t.Fatalf("Expected error for end equal to start, got nil")
+		}
+		if !errors.Is(err, ErrValidation) {
+			t.Errorf("Expected ErrValidation, got %v", err)
+		}
+	})
+
+	t.Run("invalid break starts before day start", func(t *testing.T) {
+		breaks := []Break{{StartTime: at(8, 0), EndTime: at(8, 30), Reason: "early"}}
+		_, err := NewBackfilledEntry(anchor, at(9, 0), at(17, 30), breaks, nil)
+		if err == nil {
+			t.Fatalf("Expected error for break before day start, got nil")
+		}
+		if !errors.Is(err, ErrValidation) {
+			t.Errorf("Expected ErrValidation, got %v", err)
+		}
+	})
+
+	t.Run("invalid break ends after day end", func(t *testing.T) {
+		breaks := []Break{{StartTime: at(17, 0), EndTime: at(18, 0), Reason: "late"}}
+		_, err := NewBackfilledEntry(anchor, at(9, 0), at(17, 30), breaks, nil)
+		if err == nil {
+			t.Fatalf("Expected error for break after day end, got nil")
+		}
+		if !errors.Is(err, ErrValidation) {
+			t.Errorf("Expected ErrValidation, got %v", err)
+		}
+	})
+
+	t.Run("invalid two breaks overlap", func(t *testing.T) {
+		breaks := []Break{
+			{StartTime: at(12, 0), EndTime: at(13, 0), Reason: "lunch"},
+			{StartTime: at(12, 30), EndTime: at(13, 30), Reason: "overlap"},
+		}
+		_, err := NewBackfilledEntry(anchor, at(9, 0), at(17, 30), breaks, nil)
+		if err == nil {
+			t.Fatalf("Expected error for overlapping breaks, got nil")
+		}
+		if !errors.Is(err, ErrValidation) {
+			t.Errorf("Expected ErrValidation, got %v", err)
+		}
+	})
+
+	t.Run("invalid break empty reason delegates to ValidateBreak", func(t *testing.T) {
+		breaks := []Break{{StartTime: at(12, 0), EndTime: at(13, 0), Reason: ""}}
+		_, err := NewBackfilledEntry(anchor, at(9, 0), at(17, 30), breaks, nil)
+		if err == nil {
+			t.Fatalf("Expected error for empty break reason, got nil")
+		}
+		if !errors.Is(err, ErrValidation) {
+			t.Errorf("Expected ErrValidation, got %v", err)
+		}
+	})
+
+	t.Run("invalid break end before break start delegates to ValidateBreak", func(t *testing.T) {
+		breaks := []Break{{StartTime: at(13, 0), EndTime: at(12, 0), Reason: "backwards"}}
+		_, err := NewBackfilledEntry(anchor, at(9, 0), at(17, 30), breaks, nil)
+		if err == nil {
+			t.Fatalf("Expected error for break end before start, got nil")
+		}
+		if !errors.Is(err, ErrValidation) {
+			t.Errorf("Expected ErrValidation, got %v", err)
+		}
+	})
 }
