@@ -10,9 +10,9 @@ import (
 // It returns a pointer to the found JournalEntry and its index in the slice
 // If the entry is not found, it returns nil and -1.
 func FetchEntryByID(id string, entries []JournalEntry) (*JournalEntry, int) {
-	for i, entry := range entries {
-		if entry.ID == id {
-			return &entry, i
+	for i := range entries {
+		if entries[i].ID == id {
+			return &entries[i], i
 		}
 	}
 	return nil, -1

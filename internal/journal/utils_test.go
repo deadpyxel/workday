@@ -59,6 +59,22 @@ func TestFindEntryByID(t *testing.T) {
 	}
 }
 
+func TestFetchEntryByID_ReturnsAliasNotCopy(t *testing.T) {
+	entries := []JournalEntry{{ID: "0000"}}
+
+	entry, idx := FetchEntryByID("0000", entries)
+	if entry == nil {
+		t.Fatalf("expected to find entry with ID 0000, got nil")
+	}
+
+	want := time.Date(2026, 1, 1, 9, 0, 0, 0, time.UTC)
+	entry.StartTime = want
+
+	if !entries[idx].StartTime.Equal(want) {
+		t.Errorf("expected mutation through returned pointer to update slice element, but it did not (got %v, want %v)", entries[idx].StartTime, want)
+	}
+}
+
 func generateNoteSlice(size int, start int) []Note {
 	var notes []Note
 	for i := start; i < size; i++ {
