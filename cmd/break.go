@@ -91,15 +91,15 @@ var breakStopCmd = &cobra.Command{
 }
 
 type breakModel struct {
-	isStarting      bool
-	breakTime       time.Time
-	reason          string
-	duration        *time.Duration
-	totalDayBreaks  int
-	totalBreakTime  time.Duration
-	width           int
-	height          int
-	quitting        bool
+	isStarting     bool
+	breakTime      time.Time
+	reason         string
+	duration       *time.Duration
+	totalDayBreaks int
+	totalBreakTime time.Duration
+	width          int
+	height         int
+	quitting       bool
 }
 
 func (m breakModel) Init() tea.Cmd {
@@ -127,7 +127,6 @@ func (m breakModel) View() string {
 	if m.quitting {
 		return ""
 	}
-
 
 	var content strings.Builder
 
@@ -276,7 +275,7 @@ func listBreaks(cmd *cobra.Command, args []string) error {
 	// Determine target date
 	var targetDate time.Time
 	var entryId string
-	
+
 	if len(args) > 0 {
 		targetDate, err = time.Parse("2006-01-02", args[0])
 		if err != nil {
@@ -371,7 +370,7 @@ func (m breakListModel) View() string {
 			startTime := br.StartTime.Format("15:04")
 			endTime := "ongoing"
 			duration := "N/A"
-			
+
 			if !br.EndTime.IsZero() {
 				endTime = br.EndTime.Format("15:04")
 				dur := br.Duration()
@@ -396,14 +395,14 @@ func (m breakListModel) View() string {
 			content.WriteString("\n")
 			content.WriteString(styles.SummaryStyle.Render("Summary"))
 			content.WriteString("\n")
-			
+
 			totalHours := int(totalDuration.Hours())
 			totalMinutes := int(totalDuration.Minutes()) % 60
 			totalTimeStr := fmt.Sprintf("%dh %dm", totalHours, totalMinutes)
 			if totalHours == 0 {
 				totalTimeStr = fmt.Sprintf("%dm", totalMinutes)
 			}
-			
+
 			content.WriteString(styles.LabelStyle.Render("Total breaks:") + " " + styles.ValueStyle.Render(fmt.Sprintf("%d", len(m.breaks))))
 			content.WriteString("\n")
 			content.WriteString(styles.LabelStyle.Render("Total time:") + " " + styles.SuccessStyle.Render(totalTimeStr))
@@ -451,7 +450,8 @@ Useful for retroactively logging breaks you forgot to track in real-time.
 Examples:
   workday break add start:12:00 end:13:00 reason:lunch
   workday break add start:15:00 end:15:15 reason:break
-  workday break add start:09:30 end:10:00 reason:drive`,
+  workday break add start:09:30 end:10:00 reason:drive
+  workday break add --date 2024-05-27 start:12:00 end:13:00 reason:lunch`,
 	Args: cobra.MinimumNArgs(2),
 	RunE: addBreak,
 }
@@ -474,7 +474,7 @@ func modifyBreak(cmd *cobra.Command, args []string) error {
 	dateFlag, _ := cmd.Flags().GetString("date")
 	var targetDate time.Time
 	var entryId string
-	
+
 	if dateFlag != "" {
 		targetDate, err = time.Parse("2006-01-02", dateFlag)
 		if err != nil {
@@ -498,7 +498,7 @@ func modifyBreak(cmd *cobra.Command, args []string) error {
 	// Parse modifications
 	modifications := args[1:]
 	originalBreak := entry.Breaks[breakIndex]
-	
+
 	for _, mod := range modifications {
 		err = applyBreakModification(&entry.Breaks[breakIndex], mod)
 		if err != nil {
@@ -520,12 +520,12 @@ func modifyBreak(cmd *cobra.Command, args []string) error {
 
 	// Show confirmation
 	fmt.Printf("✅ Break %s modified successfully\n", breakID)
-	fmt.Printf("Original: %s %s-%s (%s)\n", 
+	fmt.Printf("Original: %s %s-%s (%s)\n",
 		originalBreak.StartTime.Format("15:04"),
 		originalBreak.EndTime.Format("15:04"),
 		originalBreak.Reason,
 		originalBreak.Duration())
-		
+
 	newBreak := entry.Breaks[breakIndex]
 	endTime := "ongoing"
 	duration := "N/A"
@@ -533,8 +533,8 @@ func modifyBreak(cmd *cobra.Command, args []string) error {
 		endTime = newBreak.EndTime.Format("15:04")
 		duration = newBreak.Duration().String()
 	}
-	
-	fmt.Printf("Updated:  %s %s-%s (%s)\n", 
+
+	fmt.Printf("Updated:  %s %s-%s (%s)\n",
 		newBreak.StartTime.Format("15:04"),
 		endTime,
 		newBreak.Reason,
@@ -561,7 +561,7 @@ func deleteBreak(cmd *cobra.Command, args []string) error {
 	dateFlag, _ := cmd.Flags().GetString("date")
 	var targetDate time.Time
 	var entryId string
-	
+
 	if dateFlag != "" {
 		targetDate, err = time.Parse("2006-01-02", dateFlag)
 		if err != nil {
@@ -584,7 +584,7 @@ func deleteBreak(cmd *cobra.Command, args []string) error {
 
 	// Confirm deletion
 	deletedBreak := entry.Breaks[breakIndex]
-	fmt.Printf("Delete break: %s %s-%s (%s)? [y/N]: ", 
+	fmt.Printf("Delete break: %s %s-%s (%s)? [y/N]: ",
 		deletedBreak.StartTime.Format("15:04"),
 		deletedBreak.EndTime.Format("15:04"),
 		deletedBreak.Reason,
@@ -599,7 +599,7 @@ func deleteBreak(cmd *cobra.Command, args []string) error {
 
 	// Remove break from slice
 	entry.Breaks = append(entry.Breaks[:breakIndex], entry.Breaks[breakIndex+1:]...)
-	
+
 	// Save changes
 	entries[idx] = *entry
 	err = journal.SaveEntries(entries, journalPath)
@@ -611,18 +611,38 @@ func deleteBreak(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func addBreak(cmd *cobra.Command, args []string) error {
-	journalPath := viper.GetString("journalPath")
+// addBreakToJournal loads the journal, resolves the target day (today when
+// dateFlag is empty, otherwise the YYYY-MM-DD date), builds a completed break
+// from the field:value args anchored to the target date, validates it, and
+// persists the change. It returns the updated entry and its slice index so the
+// caller can render a confirmation. All times-of-day are anchored to the
+// resolved target date rather than to now.
+func addBreakToJournal(journalPath string, dateFlag string, now time.Time, args []string) (*journal.JournalEntry, int, error) {
 	entries, err := journal.LoadEntries(journalPath)
 	if err != nil {
-		return err
+		return nil, -1, err
 	}
 
-	now := time.Now()
-	currentDayId := now.Format("20060102")
-	entry, idx := journal.FetchEntryByID(currentDayId, entries)
+	// Resolve the target date.
+	var targetDate time.Time
+	var entryId string
+	if dateFlag != "" {
+		targetDate, err = time.Parse("2006-01-02", dateFlag)
+		if err != nil {
+			return nil, -1, fmt.Errorf("invalid date format. Use YYYY-MM-DD")
+		}
+		entryId = targetDate.Format("20060102")
+	} else {
+		targetDate = now
+		entryId = targetDate.Format("20060102")
+	}
+
+	entry, idx := journal.FetchEntryByID(entryId, entries)
 	if idx == -1 {
-		return journal.EntryNotFoundError(currentDayId)
+		if dateFlag != "" {
+			return nil, -1, fmt.Errorf("no entry found for %s; use 'workday backfill' to create it", dateFlag)
+		}
+		return nil, -1, journal.EntryNotFoundError(entryId)
 	}
 
 	// Parse field:value arguments
@@ -630,7 +650,7 @@ func addBreak(cmd *cobra.Command, args []string) error {
 	for _, arg := range args {
 		parts := strings.SplitN(arg, ":", 2)
 		if len(parts) != 2 {
-			return fmt.Errorf("invalid argument format '%s'. Use field:value (e.g., start:12:00)", arg)
+			return nil, -1, fmt.Errorf("invalid argument format '%s'. Use field:value (e.g., start:12:00)", arg)
 		}
 		field := strings.ToLower(strings.TrimSpace(parts[0]))
 		value := strings.TrimSpace(parts[1])
@@ -643,60 +663,74 @@ func addBreak(cmd *cobra.Command, args []string) error {
 		case "reason":
 			reason = value
 		default:
-			return fmt.Errorf("unknown field '%s'. Available fields: start, end, reason", field)
+			return nil, -1, fmt.Errorf("unknown field '%s'. Available fields: start, end, reason", field)
 		}
 	}
 
 	// Validate required fields
 	if startStr == "" {
-		return fmt.Errorf("start time is required. Usage: workday break add start:HH:MM end:HH:MM reason:text")
+		return nil, -1, fmt.Errorf("start time is required. Usage: workday break add start:HH:MM end:HH:MM reason:text")
 	}
 	if endStr == "" {
-		return fmt.Errorf("end time is required. Usage: workday break add start:HH:MM end:HH:MM reason:text")
+		return nil, -1, fmt.Errorf("end time is required. Usage: workday break add start:HH:MM end:HH:MM reason:text")
 	}
 	if strings.TrimSpace(reason) == "" {
-		return fmt.Errorf("reason is required. Usage: workday break add start:HH:MM end:HH:MM reason:text")
+		return nil, -1, fmt.Errorf("reason is required. Usage: workday break add start:HH:MM end:HH:MM reason:text")
 	}
 
 	// Parse start time
 	startTime, err := time.Parse("15:04", startStr)
 	if err != nil {
-		return fmt.Errorf("invalid start time format '%s'. Use HH:MM", startStr)
+		return nil, -1, fmt.Errorf("invalid start time format '%s'. Use HH:MM", startStr)
 	}
 
 	// Parse end time
 	endTime, err := time.Parse("15:04", endStr)
 	if err != nil {
-		return fmt.Errorf("invalid end time format '%s'. Use HH:MM", endStr)
+		return nil, -1, fmt.Errorf("invalid end time format '%s'. Use HH:MM", endStr)
 	}
 
-	// Construct the break using today's date with the specified times
+	// Construct the break using the TARGET date with the specified times
 	newBreak := journal.Break{
-		StartTime: time.Date(now.Year(), now.Month(), now.Day(),
-			startTime.Hour(), startTime.Minute(), 0, 0, now.Location()),
-		EndTime: time.Date(now.Year(), now.Month(), now.Day(),
-			endTime.Hour(), endTime.Minute(), 0, 0, now.Location()),
+		StartTime: time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(),
+			startTime.Hour(), startTime.Minute(), 0, 0, targetDate.Location()),
+		EndTime: time.Date(targetDate.Year(), targetDate.Month(), targetDate.Day(),
+			endTime.Hour(), endTime.Minute(), 0, 0, targetDate.Location()),
 		Reason: reason,
 	}
 
 	// Validate the break (checks start not zero, end after start, reason non-empty)
 	if result := journal.ValidateBreak(newBreak); !result.IsValid {
-		return fmt.Errorf("invalid break: %v", result.Error)
+		return nil, -1, fmt.Errorf("invalid break: %v", result.Error)
 	}
 
 	// Validate no overlap with existing breaks
 	if result := journal.ValidateBreakOverlap(newBreak, entry.Breaks); !result.IsValid {
-		return fmt.Errorf("cannot add break: %v", result.Error)
+		return nil, -1, fmt.Errorf("cannot add break: %v", result.Error)
 	}
 
 	// Append the break and save
 	entry.Breaks = append(entry.Breaks, newBreak)
 	entries[idx] = *entry
 
-	err = journal.SaveEntries(entries, journalPath)
+	if err := journal.SaveEntries(entries, journalPath); err != nil {
+		return nil, -1, err
+	}
+
+	return entry, idx, nil
+}
+
+func addBreak(cmd *cobra.Command, args []string) error {
+	journalPath := viper.GetString("journalPath")
+	dateFlag, _ := cmd.Flags().GetString("date")
+
+	entry, _, err := addBreakToJournal(journalPath, dateFlag, time.Now(), args)
 	if err != nil {
 		return err
 	}
+
+	// The last appended break is the one we just added.
+	newBreak := entry.Breaks[len(entry.Breaks)-1]
 
 	// Calculate daily break statistics
 	totalDayBreaks := len(entry.Breaks)
@@ -712,7 +746,7 @@ func addBreak(cmd *cobra.Command, args []string) error {
 	model := breakModel{
 		isStarting:     false,
 		breakTime:      newBreak.EndTime,
-		reason:         reason,
+		reason:         newBreak.Reason,
 		duration:       &breakDuration,
 		totalDayBreaks: totalDayBreaks,
 		totalBreakTime: totalBreakTime,
@@ -788,4 +822,5 @@ func init() {
 	breakStartCmd.Flags().StringVarP(&breakReason, "reason", "r", "", "Reason for the break")
 	breakModifyCmd.Flags().StringP("date", "d", "", "Target date (YYYY-MM-DD)")
 	breakDeleteCmd.Flags().StringP("date", "d", "", "Target date (YYYY-MM-DD)")
+	breakAddCmd.Flags().StringP("date", "d", "", "Target date (YYYY-MM-DD)")
 }
