@@ -157,7 +157,10 @@ func backfillAndSave(args []string) (*journal.JournalEntry, error, error) {
 		return nil, nil, fmt.Errorf("failed to load journal: %v", err)
 	}
 
-	dateAnchor, err := time.Parse("20060102", args[0])
+	// Parse in the local zone so anchored times-of-day match the timezone that
+	// real-time commands store. Plain time.Parse defaults to UTC, which would
+	// shift the entry and its breaks by the local UTC offset.
+	dateAnchor, err := time.ParseInLocation("20060102", args[0], time.Local)
 	if err != nil {
 		return nil, nil, fmt.Errorf("invalid date '%s'. Use YYYYMMDD (e.g., 20240527)", args[0])
 	}

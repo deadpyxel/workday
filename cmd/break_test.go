@@ -173,10 +173,10 @@ func TestAddBreakToJournal(t *testing.T) {
 
 	t.Run("overlap rejected on target day", func(t *testing.T) {
 		targetID := "20240527"
-		targetStart := time.Date(2024, 5, 27, 9, 0, 0, 0, time.UTC)
+		targetStart := time.Date(2024, 5, 27, 9, 0, 0, 0, time.Local)
 		existing := journal.Break{
-			StartTime: time.Date(2024, 5, 27, 12, 0, 0, 0, time.UTC),
-			EndTime:   time.Date(2024, 5, 27, 13, 0, 0, 0, time.UTC),
+			StartTime: time.Date(2024, 5, 27, 12, 0, 0, 0, time.Local),
+			EndTime:   time.Date(2024, 5, 27, 13, 0, 0, 0, time.Local),
 			Reason:    "lunch",
 		}
 		entries := []journal.JournalEntry{
@@ -195,6 +195,51 @@ func TestAddBreakToJournal(t *testing.T) {
 		target, _ := journal.FetchEntryByID(targetID, reloaded)
 		if len(target.Breaks) != 1 {
 			t.Errorf("expected break count unchanged at 1, got %d", len(target.Breaks))
+		}
+	})
+
+	// Regression for the UTC-vs-local anchoring bug: a break added via --date
+	// must be anchored in the same timezone as locally-stored breaks. We force
+	// a non-UTC local zone so the bug is reproducible regardless of host TZ.
+	// Pre-fix, time.Parse anchored the new break to UTC, shifting it by the
+	// local offset and falsely overlapping the existing local break.
+	t.Run("non-overlapping break accepted across non-UTC local zone", func(t *testing.T) {
+		restore := time.Local
+		time.Local = time.FixedZone("UTC-3", -3*60*60)
+		t.Cleanup(func() { time.Local = restore })
+
+		targetID := "20260623"
+		// Existing break stored in local time, as break start would write it.
+		existing := journal.Break{
+			StartTime: time.Date(2026, 6, 23, 9, 21, 0, 0, time.Local),
+			EndTime:   time.Date(2026, 6, 23, 9, 58, 0, 0, time.Local),
+			Reason:    "morning",
+		}
+		entries := []journal.JournalEntry{
+			{ID: targetID, StartTime: time.Date(2026, 6, 23, 9, 0, 0, 0, time.Local), Breaks: []journal.Break{existing}},
+		}
+		journalPath := bootstrapBreakJournal(t, entries)
+
+		entry, _, err := addBreakToJournal(journalPath, "2026-06-23", now,
+			[]string{"start:11:56", "end:13:00", "reason:lunch"})
+		if err != nil {
+			t.Fatalf("unexpected error adding non-overlapping break: %v", err)
+		}
+		if len(entry.Breaks) != 2 {
+			t.Fatalf("expected 2 breaks after add, got %d", len(entry.Breaks))
+		}
+
+		// The new break must keep its local clock time (11:56-13:00 local),
+		// not be shifted into another zone.
+		added := entry.Breaks[1]
+		if added.StartTime.Hour() != 11 || added.StartTime.Minute() != 56 {
+			t.Errorf("StartTime = %v, want 11:56 local", added.StartTime)
+		}
+		if added.EndTime.Hour() != 13 || added.EndTime.Minute() != 0 {
+			t.Errorf("EndTime = %v, want 13:00 local", added.EndTime)
+		}
+		if _, off := added.StartTime.Zone(); off != -3*60*60 {
+			t.Errorf("StartTime offset = %d, want -10800 (local)", off)
 		}
 	})
 }

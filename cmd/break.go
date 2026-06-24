@@ -627,7 +627,11 @@ func addBreakToJournal(journalPath string, dateFlag string, now time.Time, args 
 	var targetDate time.Time
 	var entryId string
 	if dateFlag != "" {
-		targetDate, err = time.Parse("2006-01-02", dateFlag)
+		// Parse in the local zone so the break's times-of-day are anchored to
+		// the same timezone that real-time commands (break start) use. Plain
+		// time.Parse defaults to UTC, which would shift the break by the local
+		// UTC offset and cause false overlaps against locally-stored breaks.
+		targetDate, err = time.ParseInLocation("2006-01-02", dateFlag, time.Local)
 		if err != nil {
 			return nil, -1, fmt.Errorf("invalid date format. Use YYYY-MM-DD")
 		}

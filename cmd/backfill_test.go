@@ -293,3 +293,47 @@ func TestBackfillAndSavePolicyViolation(t *testing.T) {
 		t.Errorf("expected a 'Validation Error:' note appended, notes = %+v", entries[0].Notes)
 	}
 }
+
+// Regression for the UTC-vs-local anchoring bug: backfill must anchor the
+// entry and its breaks to the local zone, matching how real-time commands
+// store times. We force a non-UTC local zone so the assertion is meaningful
+// regardless of host TZ. Pre-fix, time.Parse anchored to UTC, leaving the
+// persisted offset at +0000 instead of the local offset.
+func TestBackfillAndSaveAnchorsLocalZone(t *testing.T) {
+	restore := time.Local
+	time.Local = time.FixedZone("UTC-3", -3*60*60)
+	t.Cleanup(func() { time.Local = restore })
+
+	path := writeTempJournal(t, []journal.JournalEntry{})
+	setBackfillViper(t, path, "8h", "1h", "10h")
+
+	args := []string{"20240527", "start:09:00", "end:18:30", "break:12:00-13:00:lunch"}
+	if _, _, err := backfillAndSave(args); err != nil {
+		t.Fatalf("backfillAndSave returned error: %v", err)
+	}
+
+	entries, err := journal.LoadEntries(path)
+	if err != nil {
+		t.Fatalf("LoadEntries failed: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry persisted, got %d", len(entries))
+	}
+	got := entries[0]
+
+	if _, off := got.StartTime.Zone(); off != -3*60*60 {
+		t.Errorf("StartTime offset = %d, want -10800 (local)", off)
+	}
+	if got.StartTime.Hour() != 9 || got.EndTime.Hour() != 18 || got.EndTime.Minute() != 30 {
+		t.Errorf("entry times = %v-%v, want 09:00-18:30 local", got.StartTime, got.EndTime)
+	}
+	if len(got.Breaks) != 1 {
+		t.Fatalf("expected 1 break, got %d", len(got.Breaks))
+	}
+	if _, off := got.Breaks[0].StartTime.Zone(); off != -3*60*60 {
+		t.Errorf("break StartTime offset = %d, want -10800 (local)", off)
+	}
+	if got.Breaks[0].StartTime.Hour() != 12 || got.Breaks[0].EndTime.Hour() != 13 {
+		t.Errorf("break times = %v-%v, want 12:00-13:00 local", got.Breaks[0].StartTime, got.Breaks[0].EndTime)
+	}
+}
